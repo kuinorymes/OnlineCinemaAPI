@@ -18,6 +18,7 @@ AsyncSQLiteSessionLocal = async_sessionmaker(
     expire_on_commit=False
 )
 
+
 async def get_sqlite_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSQLiteSessionLocal() as session:
         yield session

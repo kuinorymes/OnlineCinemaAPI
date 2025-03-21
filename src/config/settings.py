@@ -6,6 +6,7 @@ from pydantic.v1 import BaseSettings
 from dotenv import load_dotenv
 load_dotenv()
 
+
 class BaseAppSettings(BaseSettings):
     BASE_DIR: Path = Path(__file__).parent.parent
     PATH_TO_DB: str = os.getenv("DATABASE_URL", str(BASE_DIR / "database" / "source" / "theater.db"))
