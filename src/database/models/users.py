@@ -73,7 +73,6 @@ class UserModel(Base):
     )
 
 
-
 class UserProfileModel(Base):
     __tablename__ = "user_profiles"
 
