@@ -6,6 +6,9 @@ from sqlalchemy import Integer, DateTime, String, DECIMAL, ForeignKey, func
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy import Enum as SQLAlchemyEnum
 
+from database.models.users import UserModel
+from database.models.movies import MovieModel
+from database.models.orders import OrderModel, OrderItemModel
 from database.models.base import Base
 
 
@@ -26,13 +29,19 @@ class PaymentModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    status: Mapped[PaymentStatusEnum] = mapped_column(SQLAlchemyEnum(PaymentStatusEnum), nullable=False)
+    status: Mapped[PaymentStatusEnum] = mapped_column(
+        SQLAlchemyEnum(PaymentStatusEnum), nullable=False
+    )
     amount: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
-    external_payment_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    external_payment_id: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True
+    )
 
     user: Mapped["UserModel"] = relationship(back_populates="payments")
     order: Mapped["OrderModel"] = relationship(back_populates="payments")
-    payment_items: Mapped[List["PaymentItemsModel"]] = relationship(back_populates="payment")
+    payment_items: Mapped[List["PaymentItemsModel"]] = relationship(
+        back_populates="payment"
+    )
 
     def repr(self) -> str:
         return (
@@ -46,7 +55,9 @@ class PaymentItemsModel(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, auto_increment=True)
     payment_id: Mapped[int] = mapped_column(ForeignKey("payments.id"), nullable=False)
-    order_item_id: Mapped[int] = mapped_column(ForeignKey("order_items.id"), nullable=False)
+    order_item_id: Mapped[int] = mapped_column(
+        ForeignKey("order_items.id"), nullable=False
+    )
     price_at_payment: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
 
     payment: Mapped["PaymentModel"] = relationship(back_populates="payment_items")
