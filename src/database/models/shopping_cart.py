@@ -10,6 +10,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
+from src.database.models.users import UserModel
+from src.database.models.movies import MovieModel
 from src.database import Base
 
 
@@ -17,7 +19,9 @@ class CartModel(Base):
     __tablename__ = "carts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"), unique=True, nullable=False
+    )
 
     user: Mapped["UserModel"] = relationship("User", back_populates="cart")
     items: Mapped[List["CartItem"]] = relationship(
@@ -31,11 +35,11 @@ class CartItem(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     cart_id: Mapped[int] = mapped_column(ForeignKey("carts.id"), nullable=False)
     movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False)
-    added_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
-
-    cart: Mapped["Cart"] = relationship("Cart", back_populates="items")
-    movie: Mapped["Movie"] = relationship("Movie")
-
-    __table_args__ = (
-        UniqueConstraint("cart_id", "movie_id", name="_cart_movie_uc"),
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
     )
+
+    cart: Mapped["CartModel"] = relationship("Cart", back_populates="items")
+    movie: Mapped["MovieModel"] = relationship("Movie")
+
+    __table_args__ = (UniqueConstraint("cart_id", "movie_id", name="_cart_movie_uc"),)

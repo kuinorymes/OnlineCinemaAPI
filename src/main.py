@@ -19,4 +19,6 @@ def health_check():
 api_version_prefix = "/api/v1"
 
 app.include_router(users_router, tags=["users"], prefix=f"{api_version_prefix}/users")
-app.include_router(orders_router, tags=["orders"], prefix=f"{api_version_prefix}/orders")
+app.include_router(
+    orders_router, tags=["orders"], prefix=f"{api_version_prefix}/orders"
+)

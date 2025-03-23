@@ -8,6 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database.models.users import UserModel
 from src.database.models.movies import MovieModel
+from src.database.models.shopping_cart import CartModel
 from src.database import Base
 
 
@@ -37,10 +38,10 @@ class OrderModel(Base):
     order_items: Mapped[List["OrderItemModel"]] = relationship(
         back_populates="order", cascade="all, delete"
     )
-    cart: Mapped["CartModel"] = relationship(  # noqa: F821
+    cart: Mapped["CartModel"] = relationship(
         "CartModel", back_populates="orders", cascade="all, delete"
     )
-    payments: Mapped[List["PaymentModel"]] = relationship(
+    payments: Mapped[List["PaymentModel"]] = relationship(  # noqa: F821
         "PaymentModel", back_populates="order", cascade="all, delete"
     )
 
