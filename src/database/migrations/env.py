@@ -4,8 +4,8 @@ from logging.config import fileConfig
 from sqlalchemy.ext.asyncio import create_async_engine
 from alembic import context
 
-from database.models import users, movies, orders, payments  # noqa: F401
-from database.models.base import Base
+from src.database.models import users, movies, orders, payments, shopping_cart  # noqa: F401
+from src.database.models.base import Base
 
 
 config = context.config

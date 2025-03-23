@@ -6,10 +6,9 @@ from sqlalchemy import Integer, DateTime, String, DECIMAL, ForeignKey, func
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy import Enum as SQLAlchemyEnum
 
-from database.models.users import UserModel
-from database.models.movies import MovieModel
-from database.models.orders import OrderModel, OrderItemModel
-from database.models.base import Base
+from src.database.models.users import UserModel
+from src.database.models.orders import OrderModel, OrderItemModel
+from src.database.models.base import Base
 
 
 class PaymentStatusEnum(str, Enum):
@@ -21,9 +20,9 @@ class PaymentStatusEnum(str, Enum):
 
 
 class PaymentModel(Base):
-    tablename = "payments"
+    __tablename__ = "payments"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, auto_increment=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -51,9 +50,9 @@ class PaymentModel(Base):
 
 
 class PaymentItemsModel(Base):
-    tablename = "payment_items"
+    __tablename__ = "payment_items"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, auto_increment=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     payment_id: Mapped[int] = mapped_column(ForeignKey("payments.id"), nullable=False)
     order_item_id: Mapped[int] = mapped_column(
         ForeignKey("order_items.id"), nullable=False

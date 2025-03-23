@@ -6,9 +6,9 @@ from typing import Optional, List
 from sqlalchemy import ForeignKey, DateTime, func, Numeric, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from database.models.users import UserModel
-from database.models.movies import MovieModel
-from database import Base
+from src.database.models.users import UserModel
+from src.database.models.movies import MovieModel
+from src.database import Base
 
 
 class OrderStatusEnum(str, enum.Enum):
