@@ -1,29 +1,26 @@
-import enum
+from datetime import datetime
+from typing import List
+
 from sqlalchemy import (
-    Column,
     Integer,
-    String,
     ForeignKey,
     DateTime,
     UniqueConstraint,
-    DECIMAL,
-    Enum,
     func,
 )
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-Base = declarative_base()
+from src.database import Base
 
 
-class Cart(Base):
+class CartModel(Base):
     __tablename__ = "carts"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, nullable=False)
 
-    user = relationship("User", back_populates="cart")
-    items = relationship(
+    user: Mapped["UserModel"] = relationship("User", back_populates="cart")
+    items: Mapped[List["CartItem"]] = relationship(
         "CartItem", back_populates="cart", cascade="all, delete-orphan"
     )
 
@@ -31,13 +28,13 @@ class Cart(Base):
 class CartItem(Base):
     __tablename__ = "cart_items"
 
-    id = Column(Integer, primary_key=True, index=True)
-    cart_id = Column(Integer, ForeignKey("carts.id"), nullable=False)
-    movie_id = Column(Integer, ForeignKey("movies.id"), nullable=False)
-    added_at = Column(DateTime, server_default=func.now(), nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    cart_id: Mapped[int] = mapped_column(ForeignKey("carts.id"), nullable=False)
+    movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False)
+    added_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
 
-    cart = relationship("Cart", back_populates="items")
-    movie = relationship("Movie")
+    cart: Mapped["Cart"] = relationship("Cart", back_populates="items")
+    movie: Mapped["Movie"] = relationship("Movie")
 
     __table_args__ = (
         UniqueConstraint("cart_id", "movie_id", name="_cart_movie_uc"),
