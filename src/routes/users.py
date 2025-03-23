@@ -24,6 +24,7 @@ from schemas.users import (
     ChangePasswordRequestSchema,
     ResetPasswordRequestSchema,
     ResetPasswordCompleteRequestSchema,
+    ResetPasswordResponseSchema,
 )
 from notifications.tasks import (
     send_register_activate_email,
@@ -339,9 +340,9 @@ async def refresh_access_token(
 
 @router.post("/change-password/")
 async def change_password(
-    user: Annotated[UserModel, Depends(get_current_user)],
-    data: ChangePasswordRequestSchema,
-    db: DB,
+        user: Annotated[UserModel, Depends(get_current_user)],
+        data: ChangePasswordRequestSchema,
+        db: DB,
 ):
     if not user.verify_password(data.old_password):
         raise HTTPException(
@@ -382,7 +383,6 @@ async def reset_password(
             "message": "If you're registered you will receive an email."
         }
 
-
     reset_token = PasswordResetTokenModel(
         user_id=cast(int, user.id)
     )
@@ -400,6 +400,28 @@ async def reset_password(
     return {
         "message": "If you're registered you will receive an email."
     }
+
+
+@router.get("/reset-password/{token}")
+async def reset_password_check_token(
+        token: str,
+        db: DB,
+):
+    token_stmt = select(PasswordResetTokenModel).options(
+        joinedload(PasswordResetTokenModel.user)
+    ).where(PasswordResetTokenModel.token == token)
+
+    token_result = await db.execute(token_stmt)
+    reset_token = token_result.scalar_one_or_none()
+
+    if not reset_token or reset_token.expires_at < datetime.now(timezone.utc) or not reset_token.user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid or expired token."
+        )
+    return ResetPasswordResponseSchema(
+        valid=True
+    )
 
 
 @router.post(

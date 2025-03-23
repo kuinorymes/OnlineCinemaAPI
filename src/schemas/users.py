@@ -60,6 +60,10 @@ class ResetPasswordRequestSchema(UserResendActivationEmail):
     pass
 
 
+class ResetPasswordResponseSchema(BaseModel):
+    valid: bool
+
+
 class ResetPasswordCompleteRequestSchema(BaseModel):
     new_password: str
 
@@ -67,3 +71,4 @@ class ResetPasswordCompleteRequestSchema(BaseModel):
     @classmethod
     def validate_password(cls, value):
         return validate_password_strength(value)
+
