@@ -26,3 +26,21 @@ async def send_register_activate_email(email, activation_link):
     )
     fast_mail = FastMail(mail_config)
     await fast_mail.send_message(message)
+
+
+async def send_reset_password_email(email, reset_link):
+
+    template = templates.get_template("reset_password.html")
+    html_content = template.render(
+        email=email,
+        reset_link=reset_link,
+    )
+
+    message = MessageSchema(
+        subject="Reset Password",
+        recipients=[email],
+        body=html_content,
+        subtype=MessageType.html,
+    )
+    fast_mail = FastMail(mail_config)
+    await fast_mail.send_message(message)
