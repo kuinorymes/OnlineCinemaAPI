@@ -418,10 +418,10 @@ async def reset_password_complete(
     token_result = await db.execute(token_stmt)
     reset_token = token_result.scalar_one_or_none()
 
-    if not reset_token:
+    if not reset_token or reset_token.expires_at < datetime.now(timezone.utc) or not reset_token.user.is_active:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Token not found."
+            detail="Invalid or expired token."
         )
     reset_token.user.hashed_password = hash_password(data.new_password)
 
