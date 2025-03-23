@@ -40,7 +40,7 @@ class PaymentModel(Base):
         back_populates="payment"
     )
 
-    def repr(self) -> str:
+    def __repr__(self) -> str:
         return (
             f"<PaymentModel(id={self.id}, user_id={self.user_id}, order_id={self.order_id}, "
             f"amount={self.amount}, status='{self.status}', created_at='{self.created_at}')>"
@@ -62,7 +62,7 @@ class PaymentItemsModel(Base):
         back_populates="payment_items"
     )
 
-    def repr(self) -> str:
+    def __repr__(self) -> str:
         return (
             f"<PaymentItemsModel(id={self.id}, payment_id={self.payment_id}, "
             f"order_item_id={self.order_item_id}, price_at_payment={self.price_at_payment})>"
