@@ -8,7 +8,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.models.users import UserModel
 from database.models.movies import MovieModel
-from database.models.payments import PaymentModel
 from database import Base
 
 
