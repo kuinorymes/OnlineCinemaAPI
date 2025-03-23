@@ -23,7 +23,11 @@ class BaseAppSettings(BaseSettings):
     SMTP_SERVER: str = os.getenv("SMTP_SERVER")
     EMAIL_PORT: int = os.getenv("EMAIL_PORT")
 
-    SECRET_TOKEN_KEY: str = os.getenv("SECRET_TOKEN_KEY")
+    SECRET_ACCESS_TOKEN_KEY: str = os.getenv("SECRET_ACCESS_TOKEN_KEY")
+    SECRET_REFRESH_TOKEN_KEY: str = os.getenv("SECRET_REFRESH_TOKEN_KEY")
+    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM")
+
+    LOGIN_DAYS_VALID: int = 7
 
     BASE_URL: str = "http://127.0.0.1:8000"
 
