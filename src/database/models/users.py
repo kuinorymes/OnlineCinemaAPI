@@ -6,6 +6,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Integer, String, Enum, Boolean, DateTime, ForeignKey, Date, Text
 
+from security.password import verify_password
 from src.database.models.base import Base
 from src.database.models.utils import generate_token
 
@@ -72,6 +73,8 @@ class UserModel(Base):
         cascade="all, delete-orphan"
     )
 
+    def verify_password(self, raw_password: str) -> bool:
+        return verify_password(raw_password, self.hashed_password)
 
 
 class UserProfileModel(Base):
@@ -143,3 +146,8 @@ class RefreshTokenModel(TokenBaseModel):
         nullable=False,
     )
     user: Mapped[UserModel] = relationship("UserModel", back_populates="refresh_tokens")
+
+    @classmethod
+    def create(cls, user_id: int | Mapped[int], days_valid: int, token: str) -> "RefreshTokenModel":
+        expires_at = datetime.now(timezone.utc) + timedelta(days=days_valid)
+        return cls(user_id=user_id, expires_at=expires_at, token=token)
