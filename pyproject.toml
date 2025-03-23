@@ -80,6 +80,7 @@ dependencies = [
 
 [tool.black]
 line-length = 88
+extend-exclude = "migrations/"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
