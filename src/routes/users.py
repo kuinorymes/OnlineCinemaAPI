@@ -21,6 +21,7 @@ from schemas.users import (
     UserLoginResponseSchema,
     RefreshTokenRequestSchema,
     RefreshTokenResponseSchema,
+    ChangePasswordRequestSchema,
 )
 from notifications.tasks import send_register_activate_email
 from database.models.users import (
@@ -328,3 +329,29 @@ async def refresh_access_token(
     return RefreshTokenResponseSchema(
         access_token=access_token
     )
+
+
+@router.post("/change-password/")
+async def change_password(
+    user: Annotated[UserModel, Depends(get_current_user)],
+    data: ChangePasswordRequestSchema,
+    db: DB,
+):
+    if not user.verify_password(data.old_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect password",
+        )
+
+    if data.old_password == data.new_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your new password should be different from the old one."
+        )
+
+    user.hashed_password = hash_password(data.new_password)
+
+    await db.commit()
+    return {
+        "message": "Your password has been changed!"
+    }

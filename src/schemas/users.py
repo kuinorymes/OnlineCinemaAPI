@@ -44,3 +44,13 @@ class RefreshTokenRequestSchema(BaseModel):
 class RefreshTokenResponseSchema(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class ChangePasswordRequestSchema(BaseModel):
+    old_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, value):
+        return validate_password_strength(value)
