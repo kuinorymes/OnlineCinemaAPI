@@ -58,10 +58,10 @@ DB = Annotated[AsyncSession, Depends(get_sqlite_db)]
     status_code=status.HTTP_201_CREATED,
 )
 async def register(
-        data: UserRegistrationRequestSchema,
-        background_tasks: BackgroundTasks,
-        settings: Annotated[BaseAppSettings, Depends(get_settings)],
-        db: DB,
+    data: UserRegistrationRequestSchema,
+    background_tasks: BackgroundTasks,
+    settings: Annotated[BaseAppSettings, Depends(get_settings)],
+    db: DB,
 ):
     user_stmt = select(UserModel).where(UserModel.email == data.email)
     user_result = await db.execute(user_stmt)
@@ -70,7 +70,7 @@ async def register(
     if user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"User with email {user.email} already exists."
+            detail=f"User with email {user.email} already exists.",
         )
 
     group_stmt = select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
@@ -91,13 +91,13 @@ async def register(
         db.add(user)
         await db.flush()
 
-        activation_token = ActivationTokenModel(
-            user_id=user.id
-        )
+        activation_token = ActivationTokenModel(user_id=user.id)
         db.add(activation_token)
         await db.commit()
 
-        activation_link = f"{settings.BASE_URL}/users/registration/{activation_token.token}/"
+        activation_link = (
+            f"{settings.BASE_URL}/users/registration/{activation_token.token}/"
+        )
 
         background_tasks.add_task(
             send_register_activate_email,
@@ -108,22 +108,19 @@ async def register(
     except SQLAlchemyError as e:
         raise HTTPException(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred during registration: {e}"
+            detail=f"An error occurred during registration: {e}",
         )
 
 
-@router.get(
-    "/registration/{activation_token}/",
-    status_code=status.HTTP_200_OK
-)
+@router.get("/registration/{activation_token}/", status_code=status.HTTP_200_OK)
 async def activate_user(
-        activation_token: str,
-        db: DB,
+    activation_token: str,
+    db: DB,
 ):
-    token_stmt = select(ActivationTokenModel).options(
-        joinedload(ActivationTokenModel.user)
-    ).where(
-        ActivationTokenModel.token == activation_token
+    token_stmt = (
+        select(ActivationTokenModel)
+        .options(joinedload(ActivationTokenModel.user))
+        .where(ActivationTokenModel.token == activation_token)
     )
     token_result = await db.execute(token_stmt)
     token = token_result.scalar_one_or_none()
@@ -137,15 +134,13 @@ async def activate_user(
     if token.user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This account is already activated."
+            detail="This account is already activated.",
         )
 
     token.user.is_active = True
     await db.delete(token)
     await db.commit()
-    return UserActivation(
-        message="Your account has been successfully activated."
-    )
+    return UserActivation(message="Your account has been successfully activated.")
 
 
 @router.post(
@@ -153,14 +148,16 @@ async def activate_user(
     status_code=status.HTTP_200_OK,
 )
 async def resend_activation_email(
-        data: UserResendActivationEmail,
-        background_tasks: BackgroundTasks,
-        settings: Annotated[BaseAppSettings, Depends(get_settings)],
-        db: DB,
+    data: UserResendActivationEmail,
+    background_tasks: BackgroundTasks,
+    settings: Annotated[BaseAppSettings, Depends(get_settings)],
+    db: DB,
 ):
-    user_stmt = select(UserModel).options(
-        joinedload(UserModel.activation_token)
-    ).where(UserModel.email == data.email)
+    user_stmt = (
+        select(UserModel)
+        .options(joinedload(UserModel.activation_token))
+        .where(UserModel.email == data.email)
+    )
     user_result = await db.execute(user_stmt)
     user = user_result.scalar_one_or_none()
 
@@ -171,7 +168,7 @@ async def resend_activation_email(
     if user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This account is already activated."
+            detail="This account is already activated.",
         )
 
     if user.activation_token is not None:
@@ -201,10 +198,10 @@ async def resend_activation_email(
     response_model=UserLoginResponseSchema,
 )
 async def login(
-        data: UserLoginRequestSchema,
-        db: DB,
-        settings: Annotated[BaseAppSettings, Depends(get_settings)],
-        jwt_manager: Annotated[JWTAuthManagerInterface, Depends(get_jwt_auth_manager)],
+    data: UserLoginRequestSchema,
+    db: DB,
+    settings: Annotated[BaseAppSettings, Depends(get_settings)],
+    jwt_manager: Annotated[JWTAuthManagerInterface, Depends(get_jwt_auth_manager)],
 ):
     user_stmt = select(UserModel).where(UserModel.email == data.email)
     user_result = await db.execute(user_stmt)
@@ -212,14 +209,12 @@ async def login(
 
     if not user or not user.verify_password(data.password):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials."
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials."
         )
 
     if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account is not activated."
+            status_code=status.HTTP_403_FORBIDDEN, detail="Account is not activated."
         )
 
     token = jwt_manager.create_refresh_token({"user_id": user.id})
@@ -235,7 +230,7 @@ async def login(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred during login."
+            detail="An error occurred during login.",
         )
 
     access_token = jwt_manager.create_access_token({"user_id": user.id})
@@ -249,9 +244,9 @@ oauth_scheme = OAuth2PasswordBearer(tokenUrl="/users/login/")
 
 
 async def get_current_user(
-        db: DB,
-        token: Annotated[str, Depends(oauth_scheme)],
-        jwt_manager: Annotated[JWTAuthManagerInterface, Depends(get_jwt_auth_manager)],
+    db: DB,
+    token: Annotated[str, Depends(oauth_scheme)],
+    jwt_manager: Annotated[JWTAuthManagerInterface, Depends(get_jwt_auth_manager)],
 ):
     try:
         payload = jwt_manager.decode_access_token(token)
@@ -263,8 +258,7 @@ async def get_current_user(
     user_id = payload.get("user_id")
     if not user_id:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid token."
+            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid token."
         )
     user_stmt = select(UserModel).where(UserModel.id == user_id)
     user_result = await db.execute(user_stmt)
@@ -272,8 +266,7 @@ async def get_current_user(
 
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found."
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
         )
     return user
 
@@ -283,15 +276,13 @@ async def get_current_user(
     status_code=status.HTTP_200_OK,
 )
 async def logout(
-        user: Annotated[UserModel, Depends(get_current_user)],
-        db: DB,
+    user: Annotated[UserModel, Depends(get_current_user)],
+    db: DB,
 ):
     stmt = delete(RefreshTokenModel).where(RefreshTokenModel.user_id == user.id)
     await db.execute(stmt)
     await db.commit()
-    return {
-        "message": "You have been successfully logged out."
-    }
+    return {"message": "You have been successfully logged out."}
 
 
 @router.post(
@@ -300,9 +291,9 @@ async def logout(
     status_code=status.HTTP_200_OK,
 )
 async def refresh_access_token(
-        token_data: RefreshTokenRequestSchema,
-        db: DB,
-        jwt_manager: Annotated[JWTAuthManagerInterface, Depends(get_jwt_auth_manager)],
+    token_data: RefreshTokenRequestSchema,
+    db: DB,
+    jwt_manager: Annotated[JWTAuthManagerInterface, Depends(get_jwt_auth_manager)],
 ):
     try:
         payload = jwt_manager.decode_refresh_token(token_data.refresh_token)
@@ -313,7 +304,9 @@ async def refresh_access_token(
             detail=str(error),
         )
 
-    token_stmt = select(RefreshTokenModel).where(RefreshTokenModel.token == token_data.refresh_token)
+    token_stmt = select(RefreshTokenModel).where(
+        RefreshTokenModel.token == token_data.refresh_token
+    )
     token_result = await db.execute(token_stmt)
     token = token_result.scalar_one_or_none()
     if not token:
@@ -333,16 +326,14 @@ async def refresh_access_token(
 
     access_token = jwt_manager.create_access_token({"user_id": user.id})
 
-    return RefreshTokenResponseSchema(
-        access_token=access_token
-    )
+    return RefreshTokenResponseSchema(access_token=access_token)
 
 
 @router.post("/change-password/")
 async def change_password(
-        user: Annotated[UserModel, Depends(get_current_user)],
-        data: ChangePasswordRequestSchema,
-        db: DB,
+    user: Annotated[UserModel, Depends(get_current_user)],
+    data: ChangePasswordRequestSchema,
+    db: DB,
 ):
     if not user.verify_password(data.old_password):
         raise HTTPException(
@@ -353,15 +344,13 @@ async def change_password(
     if data.old_password == data.new_password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Your new password should be different from the old one."
+            detail="Your new password should be different from the old one.",
         )
 
     user.hashed_password = hash_password(data.new_password)
 
     await db.commit()
-    return {
-        "message": "Your password has been changed!"
-    }
+    return {"message": "Your password has been changed!"}
 
 
 @router.post(
@@ -369,23 +358,19 @@ async def change_password(
     status_code=status.HTTP_200_OK,
 )
 async def reset_password(
-        data: ResetPasswordRequestSchema,
-        db: DB,
-        background_tasks: BackgroundTasks,
-        settings: Annotated[BaseAppSettings, Depends(get_settings)],
+    data: ResetPasswordRequestSchema,
+    db: DB,
+    background_tasks: BackgroundTasks,
+    settings: Annotated[BaseAppSettings, Depends(get_settings)],
 ):
     user_stmt = select(UserModel).where(UserModel.email == data.email)
     user_result = await db.execute(user_stmt)
     user = user_result.scalar_one_or_none()
 
     if not user or not user.is_active:
-        return {
-            "message": "If you're registered you will receive an email."
-        }
+        return {"message": "If you're registered you will receive an email."}
 
-    reset_token = PasswordResetTokenModel(
-        user_id=cast(int, user.id)
-    )
+    reset_token = PasswordResetTokenModel(user_id=cast(int, user.id))
 
     db.add(reset_token)
     await db.commit()
@@ -397,31 +382,32 @@ async def reset_password(
         user.email,
         reset_link,
     )
-    return {
-        "message": "If you're registered you will receive an email."
-    }
+    return {"message": "If you're registered you will receive an email."}
 
 
 @router.get("/reset-password/{token}")
 async def reset_password_check_token(
-        token: str,
-        db: DB,
+    token: str,
+    db: DB,
 ):
-    token_stmt = select(PasswordResetTokenModel).options(
-        joinedload(PasswordResetTokenModel.user)
-    ).where(PasswordResetTokenModel.token == token)
+    token_stmt = (
+        select(PasswordResetTokenModel)
+        .options(joinedload(PasswordResetTokenModel.user))
+        .where(PasswordResetTokenModel.token == token)
+    )
 
     token_result = await db.execute(token_stmt)
     reset_token = token_result.scalar_one_or_none()
 
-    if not reset_token or reset_token.expires_at < datetime.now(timezone.utc) or not reset_token.user.is_active:
+    if (
+        not reset_token
+        or reset_token.expires_at < datetime.now(timezone.utc)
+        or not reset_token.user.is_active
+    ):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invalid or expired token."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Invalid or expired token."
         )
-    return ResetPasswordResponseSchema(
-        valid=True
-    )
+    return ResetPasswordResponseSchema(valid=True)
 
 
 @router.post(
@@ -429,27 +415,30 @@ async def reset_password_check_token(
     status_code=status.HTTP_200_OK,
 )
 async def reset_password_complete(
-        token: str,
-        data: ResetPasswordCompleteRequestSchema,
-        db: DB,
+    token: str,
+    data: ResetPasswordCompleteRequestSchema,
+    db: DB,
 ):
-    token_stmt = select(PasswordResetTokenModel).options(
-        joinedload(PasswordResetTokenModel.user)
-    ).where(PasswordResetTokenModel.token == token)
+    token_stmt = (
+        select(PasswordResetTokenModel)
+        .options(joinedload(PasswordResetTokenModel.user))
+        .where(PasswordResetTokenModel.token == token)
+    )
 
     token_result = await db.execute(token_stmt)
     reset_token = token_result.scalar_one_or_none()
 
-    if not reset_token or reset_token.expires_at < datetime.now(timezone.utc) or not reset_token.user.is_active:
+    if (
+        not reset_token
+        or reset_token.expires_at < datetime.now(timezone.utc)
+        or not reset_token.user.is_active
+    ):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invalid or expired token."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Invalid or expired token."
         )
     reset_token.user.hashed_password = hash_password(data.new_password)
 
     await db.delete(reset_token)
     await db.commit()
 
-    return {
-        "message": "Your password has been successfully changed."
-    }
+    return {"message": "Your password has been successfully changed."}

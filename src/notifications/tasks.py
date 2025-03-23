@@ -5,8 +5,7 @@ from notifications.mail_config import mail_config
 
 
 templates = Environment(
-    loader=PackageLoader("notifications"),
-    autoescape=select_autoescape(["html", "xml"])
+    loader=PackageLoader("notifications"), autoescape=select_autoescape(["html", "xml"])
 )
 
 

@@ -16,5 +16,5 @@ mail_config = ConnectionConfig(
     MAIL_SERVER=settings.SMTP_SERVER,
     MAIL_STARTTLS=True,
     MAIL_SSL_TLS=False,
-    TEMPLATE_FOLDER=Path(__file__).parent / "templates"
+    TEMPLATE_FOLDER=Path(__file__).parent / "templates",
 )
