@@ -45,7 +45,7 @@ DB = Annotated[AsyncSession, Depends(get_sqlite_db)]
 
 
 @router.post(
-    "/users/registration/",
+    "/registration/",
     response_model=UserRegistrationResponseSchema,
     status_code=status.HTTP_201_CREATED,
 )
@@ -105,7 +105,7 @@ async def register(
 
 
 @router.get(
-    "/users/registration/{activation_token}/",
+    "/registration/{activation_token}/",
     status_code=status.HTTP_200_OK
 )
 async def activate_user(
@@ -141,7 +141,7 @@ async def activate_user(
 
 
 @router.post(
-    "/users/registration/resend-email/",
+    "/registration/resend-email/",
     status_code=status.HTTP_200_OK,
 )
 async def resend_activation_email(
@@ -188,7 +188,7 @@ async def resend_activation_email(
 
 
 @router.post(
-    "/users/login/",
+    "/login/",
     status_code=status.HTTP_200_OK,
     response_model=UserLoginResponseSchema,
 )
@@ -249,7 +249,7 @@ async def get_current_user(
         payload = jwt_manager.decode_access_token(token)
     except BaseSecurityError as error:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(error),
         )
     user_id = payload.get("user_id")
@@ -271,7 +271,7 @@ async def get_current_user(
 
 
 @router.post(
-    "/users/logout/",
+    "/logout/",
     status_code=status.HTTP_200_OK,
 )
 async def logout(
@@ -287,7 +287,7 @@ async def logout(
 
 
 @router.post(
-    "/users/refresh/",
+    "/refresh/",
     response_model=RefreshTokenResponseSchema,
     status_code=status.HTTP_200_OK,
 )
