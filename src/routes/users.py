@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from sqlalchemy.orm import joinedload
 from starlette import status
-from typing import Annotated
+from typing import Annotated, cast
 from datetime import datetime, timezone, timedelta
 
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
@@ -22,14 +22,20 @@ from schemas.users import (
     RefreshTokenRequestSchema,
     RefreshTokenResponseSchema,
     ChangePasswordRequestSchema,
+    ResetPasswordRequestSchema,
+    ResetPasswordCompleteRequestSchema,
 )
-from notifications.tasks import send_register_activate_email
+from notifications.tasks import (
+    send_register_activate_email,
+    send_reset_password_email,
+)
 from database.models.users import (
     UserModel,
     UserGroupModel,
     UserGroupEnum,
     ActivationTokenModel,
     RefreshTokenModel,
+    PasswordResetTokenModel,
 )
 from database.session_sqlite import get_sqlite_db
 from security.interfaces import JWTAuthManagerInterface
@@ -76,7 +82,7 @@ async def register(
         await db.flush()
     try:
         user = UserModel(
-            email=data.email,
+            email=cast(str, data.email),
             hashed_password=hash_password(data.password),
             group_id=group.id,
         )
@@ -354,4 +360,74 @@ async def change_password(
     await db.commit()
     return {
         "message": "Your password has been changed!"
+    }
+
+
+@router.post(
+    "/reset-password/",
+    status_code=status.HTTP_200_OK,
+)
+async def reset_password(
+        data: ResetPasswordRequestSchema,
+        db: DB,
+        background_tasks: BackgroundTasks,
+        settings: Annotated[BaseAppSettings, Depends(get_settings)],
+):
+    user_stmt = select(UserModel).where(UserModel.email == data.email)
+    user_result = await db.execute(user_stmt)
+    user = user_result.scalar_one_or_none()
+
+    if not user or not user.is_active:
+        return {
+            "message": "If you're registered you will receive an email."
+        }
+
+
+    reset_token = PasswordResetTokenModel(
+        user_id=cast(int, user.id)
+    )
+
+    db.add(reset_token)
+    await db.commit()
+
+    reset_link = f"{settings.BASE_URL}/users/reset-password/{reset_token.token}/"
+
+    background_tasks.add_task(
+        send_reset_password_email,
+        user.email,
+        reset_link,
+    )
+    return {
+        "message": "If you're registered you will receive an email."
+    }
+
+
+@router.post(
+    "/reset-password/{token}/",
+    status_code=status.HTTP_200_OK,
+)
+async def reset_password_complete(
+        token: str,
+        data: ResetPasswordCompleteRequestSchema,
+        db: DB,
+):
+    token_stmt = select(PasswordResetTokenModel).options(
+        joinedload(PasswordResetTokenModel.user)
+    ).where(PasswordResetTokenModel.token == token)
+
+    token_result = await db.execute(token_stmt)
+    reset_token = token_result.scalar_one_or_none()
+
+    if not reset_token:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Token not found."
+        )
+    reset_token.user.hashed_password = hash_password(data.new_password)
+
+    await db.delete(reset_token)
+    await db.commit()
+
+    return {
+        "message": "Your password has been successfully changed."
     }
