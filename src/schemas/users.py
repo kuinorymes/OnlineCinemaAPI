@@ -25,3 +25,22 @@ class UserActivation(BaseModel):
 class UserResendActivationEmail(BaseModel):
     email: EmailStr
 
+
+class UserLoginRequestSchema(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class UserLoginResponseSchema(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+
+class RefreshTokenRequestSchema(BaseModel):
+    refresh_token: str
+
+
+class RefreshTokenResponseSchema(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
