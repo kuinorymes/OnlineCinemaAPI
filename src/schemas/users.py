@@ -71,3 +71,4 @@ class ResetPasswordCompleteRequestSchema(BaseModel):
     @classmethod
     def validate_password(cls, value):
         return validate_password_strength(value)
+
