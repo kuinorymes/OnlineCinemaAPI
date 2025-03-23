@@ -1,5 +1,8 @@
 from fastapi import FastAPI
 
+from routes.users import router as users_router
+
+
 app = FastAPI(
     title="Online Cinema",
     description="A digital platform that enables users to choose, watch, "
@@ -13,3 +16,5 @@ def health_check():
 
 
 api_version_prefix = "/api/v1"
+
+app.include_router(users_router, tags=["users"], prefix=f"{api_version_prefix}/users")

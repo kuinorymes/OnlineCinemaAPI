@@ -6,6 +6,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Integer, String, Enum, Boolean, DateTime, ForeignKey, Date, Text
 
+from src.security.password import verify_password
 from src.database.models.base import Base
 from src.database.models.utils import generate_token
 
@@ -25,7 +26,7 @@ class UserGroupModel(Base):
     __tablename__ = "user_groups"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[GenderEnum] = mapped_column(
+    name: Mapped[UserGroupEnum] = mapped_column(
         Enum(UserGroupEnum), nullable=False, unique=True
     )
 
@@ -67,14 +68,17 @@ class UserModel(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
-    password_reset_token: Mapped[Optional["PasswordResetToken"]] = relationship(
-        "PasswordResetToken",
+    password_reset_token: Mapped[Optional["PasswordResetTokenModel"]] = relationship(
+        "PasswordResetTokenModel",
         back_populates="user",
         cascade="all, delete-orphan",
     )
     refresh_tokens: Mapped[List["RefreshTokenModel"]] = relationship(
         "RefreshTokenModel", back_populates="user", cascade="all, delete-orphan"
     )
+
+    def verify_password(self, raw_password: str) -> bool:
+        return verify_password(raw_password, self.hashed_password)
 
 
 class UserProfileModel(Base):
@@ -126,7 +130,7 @@ class ActivationTokenModel(TokenBaseModel):
     )
 
 
-class PasswordResetToken(TokenBaseModel):
+class PasswordResetTokenModel(TokenBaseModel):
     __tablename__ = "password_reset_tokens"
 
     user_id: Mapped[int] = mapped_column(
@@ -146,3 +150,10 @@ class RefreshTokenModel(TokenBaseModel):
         nullable=False,
     )
     user: Mapped[UserModel] = relationship("UserModel", back_populates="refresh_tokens")
+
+    @classmethod
+    def create(
+        cls, user_id: int | Mapped[int], days_valid: int, token: str
+    ) -> "RefreshTokenModel":
+        expires_at = datetime.now(timezone.utc) + timedelta(days=days_valid)
+        return cls(user_id=user_id, expires_at=expires_at, token=token)
