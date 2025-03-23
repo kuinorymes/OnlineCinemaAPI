@@ -6,7 +6,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Integer, String, Enum, Boolean, DateTime, ForeignKey, Date, Text
 
-from security.password import verify_password
+from src.security.password import verify_password
 from src.database.models.base import Base
 from src.database.models.utils import generate_token
 
@@ -62,8 +62,8 @@ class UserModel(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
-    password_reset_token: Mapped[Optional["PasswordResetToken"]] = relationship(
-        "PasswordResetToken",
+    password_reset_token: Mapped[Optional["PasswordResetTokenModel"]] = relationship(
+        "PasswordResetTokenModel",
         back_populates="user",
         cascade="all, delete-orphan",
     )
@@ -125,7 +125,7 @@ class ActivationTokenModel(TokenBaseModel):
     user: Mapped[UserModel] = relationship("UserModel", back_populates="activation_token")
 
 
-class PasswordResetToken(TokenBaseModel):
+class PasswordResetTokenModel(TokenBaseModel):
     __tablename__ = "password_reset_tokens"
 
     user_id: Mapped[int] = mapped_column(
