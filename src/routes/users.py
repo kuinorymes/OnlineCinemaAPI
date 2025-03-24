@@ -210,7 +210,7 @@ async def login(
 
     if not user or not user.verify_password(data.password):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid credentials."
         )
 
     if not user.is_active:
@@ -241,7 +241,7 @@ async def login(
     )
 
 
-oauth_scheme = OAuth2PasswordBearer(tokenUrl="/users/login/")
+oauth_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/login/")
 
 
 async def get_current_user(
@@ -371,6 +371,13 @@ async def reset_password(
     if not user or not user.is_active:
         return {"message": "If you're registered you will receive an email."}
 
+    existing_token_stmt = select(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == user.id)
+    existing_token_result = await db.execute(existing_token_stmt)
+    existing_token = existing_token_result.scalar_one_or_none()
+    if existing_token:
+        await db.delete(existing_token)
+        await db.flush()
+
     reset_token = PasswordResetTokenModel(user_id=cast(int, user.id))
 
     db.add(reset_token)
@@ -386,7 +393,7 @@ async def reset_password(
     return {"message": "If you're registered you will receive an email."}
 
 
-@router.get("/reset-password/{token}")
+@router.get("/reset-password/{token}/")
 async def reset_password_check_token(
     token: str,
     db: DB,
@@ -402,7 +409,7 @@ async def reset_password_check_token(
 
     if (
         not reset_token
-        or reset_token.expires_at < datetime.now(timezone.utc)
+        or reset_token.expires_at < datetime.now()
         or not reset_token.user.is_active
     ):
         raise HTTPException(
@@ -433,14 +440,13 @@ async def reset_password_complete(
 
     if (
         not reset_token
-        or reset_token.expires_at < datetime.now(timezone.utc)
+        or reset_token.expires_at < datetime.now()
         or not reset_token.user.is_active
     ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Invalid or expired token."
         )
     reset_token.user.hashed_password = hash_password(data.new_password)
-    #TODO send email
 
     await db.delete(reset_token)
     await db.commit()

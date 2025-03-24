@@ -50,7 +50,7 @@ async def send_reset_password_email_complete(email, login_link):
     template = templates.get_template("reset_password_complete.html")
     html_content = template.render(
         email=email,
-        reset_link=login_link,
+        login_link=login_link,
     )
 
     message = MessageSchema(
