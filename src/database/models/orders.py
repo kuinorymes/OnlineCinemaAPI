@@ -46,4 +46,4 @@ class OrderItemModel(Base):
     price_at_order: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
     order: Mapped["OrderModel"] = relationship(back_populates="order_items")
-    movie: Mapped["MovieModel"] = relationship("MovieModel")
+    movie: Mapped["MovieModel"] = relationship("MovieModel")  # noqa: F821
