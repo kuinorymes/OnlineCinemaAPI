@@ -3,6 +3,8 @@ from fastapi import FastAPI
 from routes.users import router as users_router
 from routes.orders import router as orders_router
 
+from config.dependencies import get_settings
+
 
 app = FastAPI(
     title="Online Cinema",
@@ -16,7 +18,10 @@ def health_check():
     return {"status": "ok"}
 
 
-api_version_prefix = "/api/v1"
+settings = get_settings()
+
+
+api_version_prefix = settings.API_VERSION
 
 app.include_router(users_router, tags=["users"], prefix=f"{api_version_prefix}/users")
 app.include_router(

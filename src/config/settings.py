@@ -31,6 +31,8 @@ class BaseAppSettings(BaseSettings):
 
     BASE_URL: str = "http://127.0.0.1:8000"
 
+    API_VERSION: str = "/api/v1"
+
 
 class Settings(BaseAppSettings):
     pass

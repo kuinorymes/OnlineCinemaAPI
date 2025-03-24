@@ -6,7 +6,7 @@ from sqlalchemy import Integer, DateTime, String, DECIMAL, ForeignKey, func
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy import Enum as SQLAlchemyEnum
 
-from src.database.models.base import Base
+from database.models.base import Base
 
 
 class PaymentStatusEnum(str, Enum):

@@ -29,6 +29,7 @@ from schemas.users import (
 from notifications.tasks import (
     send_register_activate_email,
     send_reset_password_email,
+    send_reset_password_email_complete,
 )
 from database.models.users import (
     UserModel,
@@ -95,9 +96,7 @@ async def register(
         db.add(activation_token)
         await db.commit()
 
-        activation_link = (
-            f"{settings.BASE_URL}/users/registration/{activation_token.token}/"
-        )
+        activation_link = f"{settings.BASE_URL}{settings.API_VERSION}/users/registration/{activation_token.token}/"
 
         background_tasks.add_task(
             send_register_activate_email,
@@ -179,7 +178,7 @@ async def resend_activation_email(
     db.add(new_token)
     await db.commit()
 
-    activation_link = f"{settings.BASE_URL}/users/registration/{new_token.token}/"
+    activation_link = f"{settings.BASE_URL}{settings.API_VERSION}/users/registration/{new_token.token}/"
 
     background_tasks.add_task(
         send_register_activate_email,
@@ -209,7 +208,7 @@ async def login(
 
     if not user or not user.verify_password(data.password):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid credentials."
         )
 
     if not user.is_active:
@@ -240,7 +239,7 @@ async def login(
     )
 
 
-oauth_scheme = OAuth2PasswordBearer(tokenUrl="/users/login/")
+oauth_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/login/")
 
 
 async def get_current_user(
@@ -370,12 +369,21 @@ async def reset_password(
     if not user or not user.is_active:
         return {"message": "If you're registered you will receive an email."}
 
+    existing_token_stmt = select(PasswordResetTokenModel).where(
+        PasswordResetTokenModel.user_id == user.id
+    )
+    existing_token_result = await db.execute(existing_token_stmt)
+    existing_token = existing_token_result.scalar_one_or_none()
+    if existing_token:
+        await db.delete(existing_token)
+        await db.flush()
+
     reset_token = PasswordResetTokenModel(user_id=cast(int, user.id))
 
     db.add(reset_token)
     await db.commit()
 
-    reset_link = f"{settings.BASE_URL}/users/reset-password/{reset_token.token}/"
+    reset_link = f"{settings.BASE_URL}{settings.API_VERSION}/users/reset-password/{reset_token.token}/"
 
     background_tasks.add_task(
         send_reset_password_email,
@@ -385,7 +393,7 @@ async def reset_password(
     return {"message": "If you're registered you will receive an email."}
 
 
-@router.get("/reset-password/{token}")
+@router.get("/reset-password/{token}/")
 async def reset_password_check_token(
     token: str,
     db: DB,
@@ -401,7 +409,7 @@ async def reset_password_check_token(
 
     if (
         not reset_token
-        or reset_token.expires_at < datetime.now(timezone.utc)
+        or reset_token.expires_at < datetime.now()
         or not reset_token.user.is_active
     ):
         raise HTTPException(
@@ -418,6 +426,8 @@ async def reset_password_complete(
     token: str,
     data: ResetPasswordCompleteRequestSchema,
     db: DB,
+    background_tasks: BackgroundTasks,
+    settings: Annotated[BaseAppSettings, Depends(get_settings)],
 ):
     token_stmt = (
         select(PasswordResetTokenModel)
@@ -430,7 +440,7 @@ async def reset_password_complete(
 
     if (
         not reset_token
-        or reset_token.expires_at < datetime.now(timezone.utc)
+        or reset_token.expires_at < datetime.now()
         or not reset_token.user.is_active
     ):
         raise HTTPException(
@@ -440,5 +450,13 @@ async def reset_password_complete(
 
     await db.delete(reset_token)
     await db.commit()
+
+    login_link = f"{settings.BASE_URL}{settings.API_VERSION}/users/login/"
+
+    background_tasks.add_task(
+        send_reset_password_email_complete,
+        reset_token.user.email,
+        login_link,
+    )
 
     return {"message": "Your password has been successfully changed."}
