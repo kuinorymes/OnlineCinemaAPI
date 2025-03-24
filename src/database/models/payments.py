@@ -58,7 +58,9 @@ class PaymentItemsModel(Base):
     price_at_payment: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
 
     payment: Mapped["PaymentModel"] = relationship(back_populates="payment_items")
-    order_item: Mapped["OrderItemModel"] = relationship(back_populates="payment_items")  # noqa: F821
+    order_item: Mapped["OrderItemModel"] = relationship(  # noqa: F821
+        back_populates="payment_items"
+    )
 
     def repr(self) -> str:
         return (

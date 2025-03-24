@@ -21,7 +21,9 @@ class CartModel(Base):
         ForeignKey("users.id"), unique=True, nullable=False
     )
 
-    user: Mapped["UserModel"] = relationship("User", back_populates="cart")  # noqa: F821
+    user: Mapped["UserModel"] = relationship(  # noqa: F821
+        "User", back_populates="cart"
+    )
     items: Mapped[List["CartItem"]] = relationship(
         "CartItem", back_populates="cart", cascade="all, delete-orphan"
     )
