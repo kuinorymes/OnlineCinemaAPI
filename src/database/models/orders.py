@@ -6,8 +6,7 @@ from typing import Optional, List
 from sqlalchemy import ForeignKey, DateTime, func, Numeric, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.database.models.users import UserModel
-from src.database.models.base import Base
+from database.models.base import Base
 
 
 class OrderStatusEnum(str, enum.Enum):
@@ -31,7 +30,7 @@ class OrderModel(Base):
         Numeric(10, 2), nullable=True
     )
 
-    user: Mapped["UserModel"] = relationship(back_populates="orders")
+    user: Mapped["UserModel"] = relationship(back_populates="orders")  # noqa: F821
     order_items: Mapped[List["OrderItemModel"]] = relationship(
         back_populates="order", cascade="all, delete"
     )

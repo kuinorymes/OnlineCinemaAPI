@@ -6,8 +6,6 @@ from sqlalchemy import Integer, DateTime, String, DECIMAL, ForeignKey, func
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy import Enum as SQLAlchemyEnum
 
-from src.database.models.users import UserModel
-from src.database.models.orders import OrderModel, OrderItemModel
 from src.database.models.base import Base
 
 
@@ -36,8 +34,8 @@ class PaymentModel(Base):
         String(255), nullable=True
     )
 
-    user: Mapped["UserModel"] = relationship(back_populates="payments")
-    order: Mapped["OrderModel"] = relationship(back_populates="payments")
+    user: Mapped["UserModel"] = relationship(back_populates="payments")  # noqa: F821
+    order: Mapped["OrderModel"] = relationship(back_populates="payments")  # noqa: F821
     payment_items: Mapped[List["PaymentItemsModel"]] = relationship(
         back_populates="payment"
     )
@@ -60,7 +58,9 @@ class PaymentItemsModel(Base):
     price_at_payment: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
 
     payment: Mapped["PaymentModel"] = relationship(back_populates="payment_items")
-    order_item: Mapped["OrderItemModel"] = relationship(back_populates="payment_items")
+    order_item: Mapped["OrderItemModel"] = relationship(  # noqa: F821
+        back_populates="payment_items"
+    )
 
     def repr(self) -> str:
         return (
