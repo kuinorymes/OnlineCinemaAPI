@@ -23,3 +23,35 @@ def get_current_user(db: Session = Depends(get_db)) -> models.User:
     return user
 
 
+@app.post("/cart/items", status_code=status.HTTP_201_CREATED)
+def add_item_to_cart(
+    movie_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    movie = db.query(models.Movie).filter(models.Movie.id == movie_id).first()
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie not found.")
+
+    cart = db.query(models.Cart).filter(models.Cart.user_id == current_user.id).first()
+    if not cart:
+        cart = models.Cart(user_id=current_user.id)
+        db.add(cart)
+        db.commit()
+        db.refresh(cart)
+
+    exists = (
+        db.query(models.CartItem)
+        .filter(models.CartItem.cart_id == cart.id, models.CartItem.movie_id == movie_id)
+        .first()
+    )
+    if exists:
+        raise HTTPException(status_code=400, detail="Movie already in cart.")
+
+    cart_item = models.CartItem(cart_id=cart.id, movie_id=movie_id)
+    db.add(cart_item)
+    db.commit()
+    db.refresh(cart_item)
+    return {"detail": "Movie added to cart", "cart_item_id": cart_item.id}
+
+
