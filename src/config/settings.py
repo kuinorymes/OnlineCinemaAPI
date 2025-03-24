@@ -33,6 +33,9 @@ class BaseAppSettings(BaseSettings):
 
     API_VERSION: str = "/api/v1"
 
+    CELERY_BROKER_URL: str = "redis://localhost:6379/0"
+    CELERY_BACKEND_URL: str = "redis://localhost:6379/0"
+
 
 class Settings(BaseAppSettings):
     pass
