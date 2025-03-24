@@ -6,9 +6,7 @@ from typing import Optional, List
 from sqlalchemy import ForeignKey, DateTime, func, Numeric, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.database.models.users import UserModel
-from src.database.models.base import Base
-
+from database.models.base import Base
 
 class OrderStatusEnum(str, enum.Enum):
     PENDING = "pending"

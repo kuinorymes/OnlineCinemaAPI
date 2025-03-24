@@ -10,8 +10,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from src.database.models.users import UserModel
-from src.database.models.movies import MovieModel
 from src.database.models.base import Base
 
 
@@ -23,7 +21,7 @@ class CartModel(Base):
         ForeignKey("users.id"), unique=True, nullable=False
     )
 
-    user: Mapped["UserModel"] = relationship("User", back_populates="cart")
+    user: Mapped["UserModel"] = relationship("User", back_populates="cart")  # noqa: F821
     items: Mapped[List["CartItem"]] = relationship(
         "CartItem", back_populates="cart", cascade="all, delete-orphan"
     )
@@ -40,6 +38,6 @@ class CartItem(Base):
     )
 
     cart: Mapped["CartModel"] = relationship("Cart", back_populates="items")
-    movie: Mapped["MovieModel"] = relationship("Movie")
+    movie: Mapped["MovieModel"] = relationship("Movie")  # noqa: F821
 
     __table_args__ = (UniqueConstraint("cart_id", "movie_id", name="_cart_movie_uc"),)

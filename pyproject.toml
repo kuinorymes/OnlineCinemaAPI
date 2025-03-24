@@ -1,5 +1,5 @@
 [project]
-name = "online-cinema-api"
+name = "src"
 version = "0.1.0"
 description = "FastAPI cinema booking API"
 authors = [
