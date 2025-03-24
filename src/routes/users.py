@@ -96,9 +96,7 @@ async def register(
         db.add(activation_token)
         await db.commit()
 
-        activation_link = (
-            f"{settings.BASE_URL}{settings.API_VERSION}/users/registration/{activation_token.token}/"
-        )
+        activation_link = f"{settings.BASE_URL}{settings.API_VERSION}/users/registration/{activation_token.token}/"
 
         background_tasks.add_task(
             send_register_activate_email,
@@ -371,7 +369,9 @@ async def reset_password(
     if not user or not user.is_active:
         return {"message": "If you're registered you will receive an email."}
 
-    existing_token_stmt = select(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == user.id)
+    existing_token_stmt = select(PasswordResetTokenModel).where(
+        PasswordResetTokenModel.user_id == user.id
+    )
     existing_token_result = await db.execute(existing_token_stmt)
     existing_token = existing_token_result.scalar_one_or_none()
     if existing_token:
