@@ -29,6 +29,7 @@ from schemas.users import (
 from notifications.tasks import (
     send_register_activate_email,
     send_reset_password_email,
+    send_reset_password_email_complete,
 )
 from database.models.users import (
     UserModel,
@@ -96,7 +97,7 @@ async def register(
         await db.commit()
 
         activation_link = (
-            f"{settings.BASE_URL}/users/registration/{activation_token.token}/"
+            f"{settings.BASE_URL}{settings.API_VERSION}/users/registration/{activation_token.token}/"
         )
 
         background_tasks.add_task(
@@ -179,7 +180,7 @@ async def resend_activation_email(
     db.add(new_token)
     await db.commit()
 
-    activation_link = f"{settings.BASE_URL}/users/registration/{new_token.token}/"
+    activation_link = f"{settings.BASE_URL}{settings.API_VERSION}/users/registration/{new_token.token}/"
 
     background_tasks.add_task(
         send_register_activate_email,
@@ -375,7 +376,7 @@ async def reset_password(
     db.add(reset_token)
     await db.commit()
 
-    reset_link = f"{settings.BASE_URL}/users/reset-password/{reset_token.token}/"
+    reset_link = f"{settings.BASE_URL}{settings.API_VERSION}/users/reset-password/{reset_token.token}/"
 
     background_tasks.add_task(
         send_reset_password_email,
@@ -418,6 +419,8 @@ async def reset_password_complete(
     token: str,
     data: ResetPasswordCompleteRequestSchema,
     db: DB,
+    background_tasks: BackgroundTasks,
+    settings: Annotated[BaseAppSettings, Depends(get_settings)],
 ):
     token_stmt = (
         select(PasswordResetTokenModel)
@@ -437,8 +440,17 @@ async def reset_password_complete(
             status_code=status.HTTP_404_NOT_FOUND, detail="Invalid or expired token."
         )
     reset_token.user.hashed_password = hash_password(data.new_password)
+    #TODO send email
 
     await db.delete(reset_token)
     await db.commit()
+
+    login_link = f"{settings.BASE_URL}{settings.API_VERSION}/users/login/"
+
+    background_tasks.add_task(
+        send_reset_password_email_complete,
+        reset_token.user.email,
+        login_link,
+    )
 
     return {"message": "Your password has been successfully changed."}
