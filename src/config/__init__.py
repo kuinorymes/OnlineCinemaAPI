@@ -1,2 +1,2 @@
-from config.settings import BaseAppSettings
-from config.dependencies import get_settings
+from .settings import BaseAppSettings
+from .dependencies import get_settings
