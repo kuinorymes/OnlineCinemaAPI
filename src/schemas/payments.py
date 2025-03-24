@@ -1,23 +1,24 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
-from decimal import Decimal
 
 from database.models.payments import PaymentStatusEnum
 
 
-class PaymentCreate(BaseModel):
-    order_id: int
+class PaymentItemCreate(BaseModel):
+    order_item_id: int
+    price_at_payment: float
 
     model_config = {
         "from_attributes": True
     }
 
 
-class PaymentItemResponse(BaseModel):
-    id: int
-    order_item_id: int
-    price_at_payment: Decimal
+class PaymentCreate(BaseModel):
+    order_id: int
+    amount: float
+    payment_items: List[PaymentItemCreate]
+    payment_method_id: str
 
     model_config = {
         "from_attributes": True
@@ -26,22 +27,41 @@ class PaymentItemResponse(BaseModel):
 
 class PaymentResponse(BaseModel):
     id: int
+    user_id: int
     order_id: int
-    amount: Decimal
-    status: PaymentStatusEnum
     created_at: datetime
-    recommendation: Optional[str] = None
+    status: PaymentStatusEnum
+    amount: float
+    external_payment_id: Optional[str] = None
 
     model_config = {
         "from_attributes": True
     }
 
 
-class StripePaymentSessionResponse(BaseModel):
+class PaymentItemResponse(BaseModel):
+    id: int
     payment_id: int
-    session_id: str
-    session_url: str
-    status: str = "pending"
+    order_item_id: int
+    price_at_payment: float
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class PaymentHistoryResponse(BaseModel):
+    payment: PaymentResponse
+    items: List[PaymentItemResponse]
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class PaymentStatusUpdate(BaseModel):
+    status: PaymentStatusEnum
+    external_payment_id: Optional[str] = None
 
     model_config = {
         "from_attributes": True
