@@ -6,10 +6,8 @@ from typing import Optional, List
 from sqlalchemy import ForeignKey, DateTime, func, Numeric, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from database.models.users import UserModel
-from database.models.movies import MovieModel
-from database.models.payments import PaymentModel
-from database import Base
+from src.database.models.users import UserModel
+from src.database.models.base import Base
 
 
 class OrderStatusEnum(str, enum.Enum):
@@ -32,17 +30,10 @@ class OrderModel(Base):
     total_amount: Mapped[Optional[Decimal]] = mapped_column(
         Numeric(10, 2), nullable=True
     )
-    cart_id: Mapped[int] = mapped_column(ForeignKey("carts.id"), nullable=False)
 
     user: Mapped["UserModel"] = relationship(back_populates="orders")
     order_items: Mapped[List["OrderItemModel"]] = relationship(
         back_populates="order", cascade="all, delete"
-    )
-    cart: Mapped["CartModel"] = relationship(  # noqa: F821
-        "CartModel", back_populates="orders", cascade="all, delete"
-    )
-    payments: Mapped[List["PaymentModel"]] = relationship(
-        "PaymentModel", back_populates="order", cascade="all, delete"
     )
 
 
@@ -55,4 +46,4 @@ class OrderItemModel(Base):
     price_at_order: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
     order: Mapped["OrderModel"] = relationship(back_populates="order_items")
-    movie: Mapped["MovieModel"] = relationship("MovieModel")
+    movie: Mapped["MovieModel"] = relationship("MovieModel")  # noqa: F821

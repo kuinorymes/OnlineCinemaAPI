@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from routes.users import router as users_router
+from routes.orders import router as orders_router
 
 
 app = FastAPI(
@@ -18,3 +19,6 @@ def health_check():
 api_version_prefix = "/api/v1"
 
 app.include_router(users_router, tags=["users"], prefix=f"{api_version_prefix}/users")
+app.include_router(
+    orders_router, tags=["orders"], prefix=f"{api_version_prefix}/orders"
+)
