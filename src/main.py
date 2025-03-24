@@ -17,7 +17,9 @@ app = FastAPI(
 def health_check():
     return {"status": "ok"}
 
+
 settings = get_settings()
+
 
 api_version_prefix = settings.API_VERSION
 
