@@ -7,9 +7,7 @@ from sqlalchemy import ForeignKey, DateTime, func, Numeric, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database.models.users import UserModel
-from src.database.models.movies import MovieModel
-from src.database.models.shopping_cart import CartModel
-from src.database import Base
+from src.database.models.base import Base
 
 
 class OrderStatusEnum(str, enum.Enum):
@@ -37,6 +35,7 @@ class OrderModel(Base):
     order_items: Mapped[List["OrderItemModel"]] = relationship(
         back_populates="order", cascade="all, delete"
     )
+
 
 class OrderItemModel(Base):
     __tablename__ = "order_items"

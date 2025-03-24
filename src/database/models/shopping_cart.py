@@ -12,7 +12,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from src.database.models.users import UserModel
 from src.database.models.movies import MovieModel
-from src.database import Base
+from src.database.models.base import Base
 
 
 class CartModel(Base):

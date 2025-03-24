@@ -14,7 +14,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
-from src.database import Base
+from src.database.models.base import Base
 
 
 MoviesGenresModel = Table(
