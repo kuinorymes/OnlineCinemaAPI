@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: 3aa7bd0ca866
+Revision ID: d557454a2bed
 Revises: 
-Create Date: 2025-03-23 21:25:03.831596
+Create Date: 2025-03-24 10:14:34.418078
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '3aa7bd0ca866'
+revision: str = 'd557454a2bed'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -120,6 +120,15 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['star_id'], ['stars.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('movie_id', 'star_id')
     )
+    op.create_table('orders',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('status', sa.Enum('PENDING', 'PAID', 'CANCELED', name='orderstatusenum'), nullable=False),
+    sa.Column('total_amount', sa.Numeric(precision=10, scale=2), nullable=True),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('password_reset_tokens',
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('id', sa.Integer(), nullable=False),
@@ -163,17 +172,6 @@ def upgrade() -> None:
     sa.UniqueConstraint('cart_id', 'movie_id', name='_cart_movie_uc')
     )
     op.create_index(op.f('ix_cart_items_id'), 'cart_items', ['id'], unique=False)
-    op.create_table('orders',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('status', sa.Enum('PENDING', 'PAID', 'CANCELED', name='orderstatusenum'), nullable=False),
-    sa.Column('total_amount', sa.Numeric(precision=10, scale=2), nullable=True),
-    sa.Column('cart_id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['cart_id'], ['carts.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
     op.create_table('order_items',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('order_id', sa.Integer(), nullable=False),
@@ -213,12 +211,12 @@ def downgrade() -> None:
     op.drop_table('payment_items')
     op.drop_table('payments')
     op.drop_table('order_items')
-    op.drop_table('orders')
     op.drop_index(op.f('ix_cart_items_id'), table_name='cart_items')
     op.drop_table('cart_items')
     op.drop_table('user_profiles')
     op.drop_table('refresh_tokens')
     op.drop_table('password_reset_tokens')
+    op.drop_table('orders')
     op.drop_table('movie_stars')
     op.drop_table('movie_genres')
     op.drop_table('movie_directors')

@@ -32,19 +32,11 @@ class OrderModel(Base):
     total_amount: Mapped[Optional[Decimal]] = mapped_column(
         Numeric(10, 2), nullable=True
     )
-    cart_id: Mapped[int] = mapped_column(ForeignKey("carts.id"), nullable=False)
 
     user: Mapped["UserModel"] = relationship(back_populates="orders")
     order_items: Mapped[List["OrderItemModel"]] = relationship(
         back_populates="order", cascade="all, delete"
     )
-    cart: Mapped["CartModel"] = relationship(
-        "CartModel", back_populates="orders", cascade="all, delete"
-    )
-    payments: Mapped[List["PaymentModel"]] = relationship(  # noqa: F821
-        "PaymentModel", back_populates="order", cascade="all, delete"
-    )
-
 
 class OrderItemModel(Base):
     __tablename__ = "order_items"
