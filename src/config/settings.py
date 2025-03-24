@@ -33,6 +33,12 @@ class BaseAppSettings(BaseSettings):
 
     API_VERSION: str = "/api/v1"
 
+    STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET")
+    STRIPE_SECRET_KEY: str = os.getenv("STRIPE_SECRET_KEY")
+
+    # STRIPE_SUCCESS_URL: str = "http://localhost:8000/payment/success"
+    # STRIPE_CANCEL_URL = "http://localhost:8000/payment/cancel"
+
 
 class Settings(BaseAppSettings):
     pass
