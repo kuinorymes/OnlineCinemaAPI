@@ -55,3 +55,58 @@ def add_item_to_cart(
     return {"detail": "Movie added to cart", "cart_item_id": cart_item.id}
 
 
+@app.delete("/cart/items/{item_id}", status_code=status.HTTP_200_OK)
+def remove_item_from_cart(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    cart = db.query(models.Cart).filter(models.Cart.user_id == current_user.id).first()
+    if not cart:
+        raise HTTPException(status_code=404, detail="Cart not found.")
+
+    cart_item = db.query(models.CartItem).filter(
+        models.CartItem.id == item_id, models.CartItem.cart_id == cart.id
+    ).first()
+    if not cart_item:
+        raise HTTPException(status_code=404, detail="Cart item not found.")
+
+    db.delete(cart_item)
+    db.commit()
+    return {"detail": "Item removed from cart"}
+
+
+@app.get("/cart", status_code=status.HTTP_200_OK)
+def view_cart(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    cart = db.query(models.Cart).filter(models.Cart.user_id == current_user.id).first()
+    if not cart:
+        return {"items": []}
+
+    items = []
+    for item in cart.items:
+        movie = item.movie
+        items.append({
+            "cart_item_id": item.id,
+            "movie_id": movie.id,
+            "title": movie.title,
+            "price": float(movie.price),
+        })
+    return {"items": items}
+
+
+@app.delete("/cart", status_code=status.HTTP_200_OK)
+def clear_cart(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    cart = db.query(models.Cart).filter(models.Cart.user_id == current_user.id).first()
+    if not cart:
+        raise HTTPException(status_code=404, detail="Cart not found.")
+
+    for item in cart.items:
+        db.delete(item)
+    db.commit()
+    return {"detail": "Cart cleared"}
