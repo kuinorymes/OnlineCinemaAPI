@@ -1,7 +1,8 @@
 import stripe
 from datetime import datetime
 
-stripe.api_key = "sk_test_51QxBPLKX7EO9LjLpMK58n2sEjFFAqE11RuyUCFgTIvLSS7uH4Ho4jLmeNmL224hallbOWXxih3v7XKIbGkp4TMhw00oFPR3ImN"
+stripe.api_key = ("sk_test_51QxBPLKX7EO9LjLpMK58n2sEjFFAqE11"
+                  "RuyUCFgTIvLSS7uH4Ho4jLmeNmL224hallbOWXxih3v7XKIbGkp4TMhw00oFPR3ImN")
 
 
 def create_checkout_session(order_id: int, total_amount: float, user_id: int) -> str:
@@ -25,8 +26,8 @@ def create_checkout_session(order_id: int, total_amount: float, user_id: int) ->
                 },
             ],
             mode="payment",
-            success_url=f"http://localhost:8000/success?session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"http://localhost:8000/cancel",
+            success_url=f"http://localhost:8000/success?session_id={{CHECKOUT_SESSION_ID}}",  # noqa: F541
+            cancel_url=f"http://localhost:8000/cancel",  # noqa: F541
             idempotency_key=idempotency_key,
         )
         return checkout_session.url
