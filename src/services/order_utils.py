@@ -8,10 +8,10 @@ from schemas.payments import PaymentItemCreate
 
 
 async def validate_order_for_payment(
-        db: AsyncSession,
-        order_id: int,
-        user_id: int,
-        payment_items: List[PaymentItemCreate]
+    db: AsyncSession,
+    order_id: int,
+    user_id: int,
+    payment_items: List[PaymentItemCreate],
 ) -> int:
     """
     Validate order before payment and return total amount
