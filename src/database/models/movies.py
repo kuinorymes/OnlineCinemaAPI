@@ -1,5 +1,6 @@
 from typing import Optional
 
+import uuid
 from sqlalchemy import (
     String,
     Float,
@@ -129,7 +130,7 @@ class MovieModel(Base):
     __tablename__ = "movies"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    uuid: Mapped[UUID] = mapped_column(UUID, unique=True)
+    uuid: Mapped[UUID] = mapped_column(UUID, unique=True, default=uuid.uuid4())
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     year: Mapped[int] = mapped_column(Integer, nullable=False)  # release year
     time: Mapped[int] = mapped_column(
