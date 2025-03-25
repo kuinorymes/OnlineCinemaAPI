@@ -84,7 +84,7 @@ class UserModel(Base):
     refresh_tokens: Mapped[List["RefreshTokenModel"]] = relationship(
         "RefreshTokenModel", back_populates="user", cascade="all, delete-orphan"
     )
-    cart: Mapped["CartModel"] = relationship(
+    cart: Mapped["CartModel"] = relationship(# noqa: F821
         "CartModel", back_populates="user", uselist=False
     )  # noqa: F821
 
