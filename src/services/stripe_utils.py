@@ -1,8 +1,10 @@
 import stripe
 from datetime import datetime
 
-stripe.api_key = ("sk_test_51QxBPLKX7EO9LjLpMK58n2sEjFFAqE11"
-                  "RuyUCFgTIvLSS7uH4Ho4jLmeNmL224hallbOWXxih3v7XKIbGkp4TMhw00oFPR3ImN")
+stripe.api_key = (
+    "sk_test_51QxBPLKX7EO9LjLpMK58n2sEjFFAqE11"
+    "RuyUCFgTIvLSS7uH4Ho4jLmeNmL224hallbOWXxih3v7XKIbGkp4TMhw00oFPR3ImN"
+)
 
 
 def create_checkout_session(order_id: int, total_amount: float, user_id: int) -> str:
