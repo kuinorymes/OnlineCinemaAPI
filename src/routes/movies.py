@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
+from sqlalchemy import exists
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import select, func
 
+from database.models.orders import OrderItemModel
 from schemas import (
     MovieListResponseSchema,
     MovieListItemSchema,
@@ -284,6 +286,16 @@ async def delete_movie(movie_id: int, db: AsyncSession = Depends(get_db)):
 
     if not movie:
         raise HTTPException(status_code=404, detail="Movie not found")
+
+    order_stmt = select(exists().where(OrderItemModel.movie_id == movie_id))
+    order_result = await db.execute(order_stmt)
+    is_purchased = order_result.scalar()
+
+    if is_purchased:
+        raise HTTPException(
+            status_code=403,
+            detail="You cant delete this movie because someone purchased it"
+        )
 
     await db.delete(movie)
     await db.commit()
