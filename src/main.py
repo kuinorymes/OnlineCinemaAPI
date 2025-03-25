@@ -3,12 +3,12 @@ from fastapi import FastAPI
 app = FastAPI(
     title="Online Cinema",
     description="A digital platform that enables users to choose, watch, "
-                "and purchase access to movies and other video content via the internet."
+    "and purchase access to movies and other video content via the internet.",
 )
 
 
 @app.get("/health")
-def health_check():
+def health_check() -> dict:
     return {"status": "ok"}
 
 

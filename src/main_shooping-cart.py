@@ -1,14 +1,14 @@
 from fastapi import FastAPI, HTTPException, Depends, status
 from sqlalchemy.orm import Session
-from database import SessionLocal, engine # эти названия нужно подстроить
-from src.database.models import models # и эти тоже
+from database import SessionLocal, engine
+from src.database.models import models
 
 
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 
-def get_db():
+def get_db() -> Session:
     db = SessionLocal()
     try:
         yield db
@@ -27,8 +27,8 @@ def get_current_user(db: Session = Depends(get_db)) -> models.User:
 def add_item_to_cart(
     movie_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
-):
+    current_user: models.User = Depends(get_current_user),
+) -> models.Item:
     movie = db.query(models.Movie).filter(models.Movie.id == movie_id).first()
     if not movie:
         raise HTTPException(status_code=404, detail="Movie not found.")
@@ -42,7 +42,9 @@ def add_item_to_cart(
 
     exists = (
         db.query(models.CartItem)
-        .filter(models.CartItem.cart_id == cart.id, models.CartItem.movie_id == movie_id)
+        .filter(
+            models.CartItem.cart_id == cart.id, models.CartItem.movie_id == movie_id
+        )
         .first()
     )
     if exists:
@@ -59,15 +61,17 @@ def add_item_to_cart(
 def remove_item_from_cart(
     item_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
-):
+    current_user: models.User = Depends(get_current_user),
+) -> models.Item:
     cart = db.query(models.Cart).filter(models.Cart.user_id == current_user.id).first()
     if not cart:
         raise HTTPException(status_code=404, detail="Cart not found.")
 
-    cart_item = db.query(models.CartItem).filter(
-        models.CartItem.id == item_id, models.CartItem.cart_id == cart.id
-    ).first()
+    cart_item = (
+        db.query(models.CartItem)
+        .filter(models.CartItem.id == item_id, models.CartItem.cart_id == cart.id)
+        .first()
+    )
     if not cart_item:
         raise HTTPException(status_code=404, detail="Cart item not found.")
 
@@ -78,9 +82,8 @@ def remove_item_from_cart(
 
 @app.get("/cart", status_code=status.HTTP_200_OK)
 def view_cart(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
-):
+    db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)
+) -> models.CartItem:
     cart = db.query(models.Cart).filter(models.Cart.user_id == current_user.id).first()
     if not cart:
         return {"items": []}
@@ -88,20 +91,21 @@ def view_cart(
     items = []
     for item in cart.items:
         movie = item.movie
-        items.append({
-            "cart_item_id": item.id,
-            "movie_id": movie.id,
-            "title": movie.title,
-            "price": float(movie.price),
-        })
+        items.append(
+            {
+                "cart_item_id": item.id,
+                "movie_id": movie.id,
+                "title": movie.title,
+                "price": float(movie.price),
+            }
+        )
     return {"items": items}
 
 
 @app.delete("/cart", status_code=status.HTTP_200_OK)
 def clear_cart(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
-):
+    db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)
+) -> models.CartItem:
     cart = db.query(models.Cart).filter(models.Cart.user_id == current_user.id).first()
     if not cart:
         raise HTTPException(status_code=404, detail="Cart not found.")

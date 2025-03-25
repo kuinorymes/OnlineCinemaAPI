@@ -19,7 +19,7 @@ Base = declarative_base()
 class Cart(Base):
     __tablename__ = "carts"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id1 = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
 
     user = relationship("User", back_populates="cart")
@@ -31,7 +31,7 @@ class Cart(Base):
 class CartItem(Base):
     __tablename__ = "cart_items"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id2 = Column(Integer, primary_key=True, index=True)
     cart_id = Column(Integer, ForeignKey("carts.id"), nullable=False)
     movie_id = Column(Integer, ForeignKey("movies.id"), nullable=False)
     added_at = Column(DateTime, server_default=func.now(), nullable=False)
@@ -39,6 +39,4 @@ class CartItem(Base):
     cart = relationship("Cart", back_populates="items")
     movie = relationship("Movie")
 
-    __table_args__ = (
-        UniqueConstraint("cart_id", "movie_id", name="_cart_movie_uc"),
-    )
+    __table_args__ = (UniqueConstraint("cart_id", "movie_id", name="_cart_movie_uc"),)
