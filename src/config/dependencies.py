@@ -1,7 +1,8 @@
 import os
 
-from fastapi import Depends
-
+from fastapi import Depends, HTTPException, status
+from src.routes.auth import get_current_user
+from src.database.models import User
 from config.settings import BaseAppSettings, TestingSettings, Settings
 from security.interfaces import JWTAuthManagerInterface
 from security.jwt_manager import JWTAuthManager
@@ -41,6 +42,13 @@ def get_jwt_auth_manager(
     )
 
 
+def is_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.group.name != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. Admins only."
+        )
+    return current_user
+  
 def get_s3_storage_client(
     settings: BaseAppSettings = Depends(get_settings),
 ) -> S3StorageInterface:
