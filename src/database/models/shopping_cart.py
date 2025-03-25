@@ -10,7 +10,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from src.database.models.base import Base
+from src.database import Base
 
 
 class CartItem(Base):
