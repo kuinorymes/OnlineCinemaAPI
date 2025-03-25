@@ -38,8 +38,7 @@ def get_jwt_auth_manager(
         secret_key_refresh=settings.SECRET_REFRESH_TOKEN_KEY,
         algorithm=settings.JWT_ALGORITHM,
     )
-
-
+  
 def get_s3_storage_client(
     settings: BaseAppSettings = Depends(get_settings),
 ) -> S3StorageInterface:
