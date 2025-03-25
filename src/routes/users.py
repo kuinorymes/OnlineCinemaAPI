@@ -69,10 +69,10 @@ DB = Annotated[AsyncSession, Depends(get_sqlite_db)]
     status_code=status.HTTP_201_CREATED,
 )
 async def register(
-    data: UserRegistrationRequestSchema,
-    background_tasks: BackgroundTasks,
-    settings: Annotated[BaseAppSettings, Depends(get_settings)],
-    db: DB,
+        data: UserRegistrationRequestSchema,
+        background_tasks: BackgroundTasks,
+        settings: Annotated[BaseAppSettings, Depends(get_settings)],
+        db: DB,
 ):
     user_stmt = select(UserModel).where(UserModel.email == data.email)
     user_result = await db.execute(user_stmt)
@@ -123,8 +123,8 @@ async def register(
 
 @router.get("/registration/{activation_token}/", status_code=status.HTTP_200_OK)
 async def activate_user(
-    activation_token: str,
-    db: DB,
+        activation_token: str,
+        db: DB,
 ):
     token_stmt = (
         select(ActivationTokenModel)
@@ -157,10 +157,10 @@ async def activate_user(
     status_code=status.HTTP_200_OK,
 )
 async def resend_activation_email(
-    data: UserResendActivationEmail,
-    background_tasks: BackgroundTasks,
-    settings: Annotated[BaseAppSettings, Depends(get_settings)],
-    db: DB,
+        data: UserResendActivationEmail,
+        background_tasks: BackgroundTasks,
+        settings: Annotated[BaseAppSettings, Depends(get_settings)],
+        db: DB,
 ):
     user_stmt = (
         select(UserModel)
@@ -207,10 +207,10 @@ async def resend_activation_email(
     response_model=UserLoginResponseSchema,
 )
 async def login(
-    data: UserLoginRequestSchema,
-    db: DB,
-    settings: Annotated[BaseAppSettings, Depends(get_settings)],
-    jwt_manager: Annotated[JWTAuthManagerInterface, Depends(get_jwt_auth_manager)],
+        data: UserLoginRequestSchema,
+        db: DB,
+        settings: Annotated[BaseAppSettings, Depends(get_settings)],
+        jwt_manager: Annotated[JWTAuthManagerInterface, Depends(get_jwt_auth_manager)],
 ):
     user_stmt = select(UserModel).where(UserModel.email == data.email)
     user_result = await db.execute(user_stmt)
@@ -253,9 +253,9 @@ oauth_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/login/")
 
 
 async def get_current_user(
-    db: DB,
-    token: Annotated[str, Depends(oauth_scheme)],
-    jwt_manager: Annotated[JWTAuthManagerInterface, Depends(get_jwt_auth_manager)],
+        db: DB,
+        token: Annotated[str, Depends(oauth_scheme)],
+        jwt_manager: Annotated[JWTAuthManagerInterface, Depends(get_jwt_auth_manager)],
 ):
     try:
         payload = jwt_manager.decode_access_token(token)
@@ -285,8 +285,8 @@ async def get_current_user(
     status_code=status.HTTP_200_OK,
 )
 async def logout(
-    user: Annotated[UserModel, Depends(get_current_user)],
-    db: DB,
+        user: Annotated[UserModel, Depends(get_current_user)],
+        db: DB,
 ):
     stmt = delete(RefreshTokenModel).where(RefreshTokenModel.user_id == user.id)
     await db.execute(stmt)
@@ -300,9 +300,9 @@ async def logout(
     status_code=status.HTTP_200_OK,
 )
 async def refresh_access_token(
-    token_data: RefreshTokenRequestSchema,
-    db: DB,
-    jwt_manager: Annotated[JWTAuthManagerInterface, Depends(get_jwt_auth_manager)],
+        token_data: RefreshTokenRequestSchema,
+        db: DB,
+        jwt_manager: Annotated[JWTAuthManagerInterface, Depends(get_jwt_auth_manager)],
 ):
     try:
         payload = jwt_manager.decode_refresh_token(token_data.refresh_token)
@@ -340,9 +340,9 @@ async def refresh_access_token(
 
 @router.post("/change-password/")
 async def change_password(
-    user: Annotated[UserModel, Depends(get_current_user)],
-    data: ChangePasswordRequestSchema,
-    db: DB,
+        user: Annotated[UserModel, Depends(get_current_user)],
+        data: ChangePasswordRequestSchema,
+        db: DB,
 ):
     if not user.verify_password(data.old_password):
         raise HTTPException(
@@ -367,10 +367,10 @@ async def change_password(
     status_code=status.HTTP_200_OK,
 )
 async def reset_password(
-    data: ResetPasswordRequestSchema,
-    db: DB,
-    background_tasks: BackgroundTasks,
-    settings: Annotated[BaseAppSettings, Depends(get_settings)],
+        data: ResetPasswordRequestSchema,
+        db: DB,
+        background_tasks: BackgroundTasks,
+        settings: Annotated[BaseAppSettings, Depends(get_settings)],
 ):
     user_stmt = select(UserModel).where(UserModel.email == data.email)
     user_result = await db.execute(user_stmt)
@@ -405,8 +405,8 @@ async def reset_password(
 
 @router.get("/reset-password/{token}/")
 async def reset_password_check_token(
-    token: str,
-    db: DB,
+        token: str,
+        db: DB,
 ):
     token_stmt = (
         select(PasswordResetTokenModel)
@@ -418,9 +418,9 @@ async def reset_password_check_token(
     reset_token = token_result.scalar_one_or_none()
 
     if (
-        not reset_token
-        or reset_token.expires_at < datetime.now()
-        or not reset_token.user.is_active
+            not reset_token
+            or reset_token.expires_at < datetime.now()
+            or not reset_token.user.is_active
     ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Invalid or expired token."
@@ -433,11 +433,11 @@ async def reset_password_check_token(
     status_code=status.HTTP_200_OK,
 )
 async def reset_password_complete(
-    token: str,
-    data: ResetPasswordCompleteRequestSchema,
-    db: DB,
-    background_tasks: BackgroundTasks,
-    settings: Annotated[BaseAppSettings, Depends(get_settings)],
+        token: str,
+        data: ResetPasswordCompleteRequestSchema,
+        db: DB,
+        background_tasks: BackgroundTasks,
+        settings: Annotated[BaseAppSettings, Depends(get_settings)],
 ):
     token_stmt = (
         select(PasswordResetTokenModel)
@@ -449,9 +449,9 @@ async def reset_password_complete(
     reset_token = token_result.scalar_one_or_none()
 
     if (
-        not reset_token
-        or reset_token.expires_at < datetime.now()
-        or not reset_token.user.is_active
+            not reset_token
+            or reset_token.expires_at < datetime.now()
+            or not reset_token.user.is_active
     ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Invalid or expired token."
@@ -480,6 +480,7 @@ async def reset_password_complete(
 async def get_user_profile(
         db: DB,
         user: Annotated[UserModel, Depends(get_current_user)],
+        s3_client: Annotated[S3StorageInterface, Depends(get_s3_storage_client)],
 ):
     profile_stmt = select(UserProfileModel).where(UserProfileModel.user_id == user.id)
     profile_result = await db.execute(profile_stmt)
@@ -490,7 +491,17 @@ async def get_user_profile(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You don't have a profile yet."
         )
-    return profile
+
+    avatar_url = await s3_client.get_file_url(profile.avatar)
+
+    return UserProfileResponseSchema(
+        first_name=profile.first_name,
+        last_name=profile.last_name,
+        gender=profile.gender,
+        date_of_birth=profile.date_of_birth,
+        info=profile.info,
+        avatar=cast(HttpUrl, avatar_url)
+    )
 
 
 @router.post(
@@ -515,7 +526,7 @@ async def create_profile(
         )
 
     avatar_bytes = await data.avatar.read()
-    avatar_key = avatar_key = f"avatars/{user.id}_{data.avatar.filename}"
+    avatar_key = f"avatars/{user.id}_{data.avatar.filename}"
 
     try:
         await s3_client.upload_file(
@@ -555,24 +566,3 @@ async def create_profile(
         info=new_profile.info,
         avatar=cast(HttpUrl, avatar_url)
     )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
