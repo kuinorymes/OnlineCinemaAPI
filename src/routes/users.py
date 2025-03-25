@@ -26,6 +26,11 @@ from schemas.users import (
     ResetPasswordCompleteRequestSchema,
     ResetPasswordResponseSchema,
 )
+from schemas.profiles import (
+    UserProfileResponseSchema,
+    ProfileCreateRequestSchema,
+    ProfileCreateResponseSchema,
+)
 from notifications.tasks import (
     send_register_activate_email,
     send_reset_password_email,
@@ -38,6 +43,7 @@ from database.models.users import (
     ActivationTokenModel,
     RefreshTokenModel,
     PasswordResetTokenModel,
+    UserProfileModel,
 )
 from database.session_sqlite import get_sqlite_db
 from security.interfaces import JWTAuthManagerInterface
@@ -460,3 +466,69 @@ async def reset_password_complete(
     )
 
     return {"message": "Your password has been successfully changed."}
+
+
+@router.get(
+    "/my-profile/",
+    status_code=status.HTTP_200_OK,
+    response_model=UserProfileResponseSchema
+)
+async def get_user_profile(
+        db: DB,
+        user: Annotated[UserModel, Depends(get_current_user)],
+):
+    profile_stmt = select(UserProfileModel).where(UserProfileModel.user_id == user.id)
+    profile_result = await db.execute(profile_stmt)
+    profile = profile_result.scalar_one_or_none()
+
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You don't have a profile yet."
+        )
+    return profile
+
+
+@router.post(
+    "/create-profile/",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ProfileCreateResponseSchema,
+)
+async def create_profile(
+        data: Annotated[ProfileCreateRequestSchema, Depends(ProfileCreateRequestSchema.from_form)],
+        user: Annotated[UserModel, Depends(get_current_user)],
+        db: DB,
+):
+    profile_stmt = select(UserProfileModel).where(UserProfileModel.user_id == user.id)
+    profile_result = await db.execute(profile_stmt)
+    profile = profile_result.scalar_one_or_none()
+
+    if profile:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You already have a profile."
+        )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
