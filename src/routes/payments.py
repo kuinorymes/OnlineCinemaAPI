@@ -21,8 +21,10 @@ from services.stripe_utils import create_checkout_session
 
 router = APIRouter()
 
-stripe.api_key = ("sk_test_51QxBPLKX7EO9LjLpMK58n2sEjFFAqE11RuyUCF"
-                  "gTIvLSS7uH4Ho4jLmeNmL224hallbOWXxih3v7XKIbGkp4TMhw00oFPR3ImN")
+stripe.api_key = (
+    "sk_test_51QxBPLKX7EO9LjLpMK58n2sEjFFAqE11RuyUCF"
+    "gTIvLSS7uH4Ho4jLmeNmL224hallbOWXxih3v7XKIbGkp4TMhw00oFPR3ImN"
+)
 endpoint_secret = (
     "whsec_f61d76fd5229d4fc777431940843508ab66afec305fb243e17b50ed55cb17f3a"
 )
