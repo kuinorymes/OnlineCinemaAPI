@@ -12,7 +12,9 @@ from database.session_sqlite import get_sqlite_db
 from routes.users import get_current_user
 from schemas.payments import (
     PaymentCreate,
-    PaymentHistoryResponse, PaymentResponse, PaymentItemResponse,
+    PaymentHistoryResponse,
+    PaymentResponse,
+    PaymentItemResponse,
 )
 from services.db_utils import save_payment_to_db, save_payment_items_to_db
 from services.stripe_utils import create_checkout_session
@@ -20,7 +22,9 @@ from services.stripe_utils import create_checkout_session
 router = APIRouter()
 
 stripe.api_key = "sk_test_51QxBPLKX7EO9LjLpMK58n2sEjFFAqE11RuyUCFgTIvLSS7uH4Ho4jLmeNmL224hallbOWXxih3v7XKIbGkp4TMhw00oFPR3ImN"
-endpoint_secret = "whsec_f61d76fd5229d4fc777431940843508ab66afec305fb243e17b50ed55cb17f3a"
+endpoint_secret = (
+    "whsec_f61d76fd5229d4fc777431940843508ab66afec305fb243e17b50ed55cb17f3a"
+)
 
 YOUR_DOMAIN = "http://127.0.0.1:8000/api/v1/payments"
 
@@ -37,10 +41,10 @@ async def cancel_page():
 
 @router.post("/create_payment", response_model=dict, status_code=201)
 async def create_payment(
-        background_tasks: BackgroundTasks,
-        payment_data: PaymentCreate,
-        db: AsyncSession = Depends(get_sqlite_db),
-        current_user: UserModel = Depends(get_current_user)
+    background_tasks: BackgroundTasks,
+    payment_data: PaymentCreate,
+    db: AsyncSession = Depends(get_sqlite_db),
+    current_user: UserModel = Depends(get_current_user),
 ):
     """
     Easily create a Stripe payment session and return a payment link.
@@ -48,24 +52,30 @@ async def create_payment(
     try:
         total_amount = sum(item.price_at_payment for item in payment_data.payment_items)
 
-        payment_url = create_checkout_session(payment_data.order_id, total_amount, current_user.id)
+        payment_url = create_checkout_session(
+            payment_data.order_id, total_amount, current_user.id
+        )
 
-        db_payment = await save_payment_to_db(db, payment_data.order_id, total_amount, payment_url, current_user.id)
+        db_payment = await save_payment_to_db(
+            db, payment_data.order_id, total_amount, payment_url, current_user.id
+        )
 
         await save_payment_items_to_db(db, db_payment.id, payment_data.payment_items)
 
         return {"payment_link": payment_url}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error when creating a payment: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error when creating a payment: {str(e)}"
+        )
 
 
 @router.get("/", response_model=List[PaymentHistoryResponse])
 async def get_payment_history(
-        db: AsyncSession = Depends(get_sqlite_db),
-        current_user: UserModel = Depends(get_current_user),
-        status: Optional[PaymentStatusEnum] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None
+    db: AsyncSession = Depends(get_sqlite_db),
+    current_user: UserModel = Depends(get_current_user),
+    status: Optional[PaymentStatusEnum] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
 ):
     """
     Get payment history for the current user with optional filters.
@@ -86,7 +96,9 @@ async def get_payment_history(
 
     payment_data = []
     for payment in payments:
-        items_query = select(PaymentItemsModel).where(PaymentItemsModel.payment_id == payment.id)
+        items_query = select(PaymentItemsModel).where(
+            PaymentItemsModel.payment_id == payment.id
+        )
         items_result = await db.execute(items_query)
         payment_items = items_result.scalars().all()
 
@@ -103,25 +115,26 @@ async def get_payment_history(
                     id=item.id,
                     payment_id=item.payment_id,
                     order_item_id=item.order_item_id,
-                    price_at_payment=item.price_at_payment
+                    price_at_payment=item.price_at_payment,
                 )
                 for item in payment_items
-            ]
+            ],
         )
 
-        payment_data.append(PaymentHistoryResponse(
-            payment=payment_response,
-            items=payment_response.items
-        ))
+        payment_data.append(
+            PaymentHistoryResponse(
+                payment=payment_response, items=payment_response.items
+            )
+        )
 
     return payment_data
 
 
 @router.get("/{payment_id}", response_model=PaymentHistoryResponse)
 async def get_payment_details(
-        payment_id: int,
-        db: AsyncSession = Depends(get_sqlite_db),
-        current_user: UserModel = Depends(get_current_user)
+    payment_id: int,
+    db: AsyncSession = Depends(get_sqlite_db),
+    current_user: UserModel = Depends(get_current_user),
 ):
     """
     Get details of a specific payment
@@ -130,14 +143,13 @@ async def get_payment_details(
 
     if not payment:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Payment not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found"
         )
 
     if payment.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have permission to view this payment"
+            detail="You don't have permission to view this payment",
         )
 
     result = await db.execute(
@@ -150,7 +162,7 @@ async def get_payment_details(
             id=item.id,
             payment_id=item.payment_id,
             order_item_id=item.order_item_id,
-            price_at_payment=item.price_at_payment
+            price_at_payment=item.price_at_payment,
         )
         for item in items
     ]
@@ -164,9 +176,9 @@ async def get_payment_details(
             status=payment.status,
             amount=payment.amount,
             external_payment_id=payment.external_payment_id,
-            items=payment_items
+            items=payment_items,
         ),
-        items=payment_items
+        items=payment_items,
     )
 
 
@@ -176,9 +188,7 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_sqlite
     sig_header = request.headers.get("Stripe-Signature")
 
     try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, endpoint_secret
-        )
+        event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
     except ValueError as e:
         raise HTTPException(status_code=400, detail="Invalid payload")
     except stripe.error.SignatureVerificationError as e:
@@ -213,25 +223,29 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_sqlite
             new_payment_item = PaymentItemsModel(
                 payment_id=new_payment.id,
                 order_item_id=order_item_id,
-                price_at_payment=price_at_payment
+                price_at_payment=price_at_payment,
             )
             db.add(new_payment_item)
 
         await db.commit()
 
-        return JSONResponse(status_code=200, content={"message": "Webhook received successfully"})
+        return JSONResponse(
+            status_code=200, content={"message": "Webhook received successfully"}
+        )
     else:
-        return JSONResponse(status_code=400, content={"message": "Unhandled event type"})
+        return JSONResponse(
+            status_code=400, content={"message": "Unhandled event type"}
+        )
 
 
 # Admin endpoints
 @router.get("/admin-payments/", response_model=List[PaymentHistoryResponse])
 async def admin_get_payments(
-        db: AsyncSession = Depends(get_sqlite_db),
-        user_id: Optional[int] = None,
-        status: Optional[PaymentStatusEnum] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None
+    db: AsyncSession = Depends(get_sqlite_db),
+    user_id: Optional[int] = None,
+    status: Optional[PaymentStatusEnum] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
 ):
     """
     Admin endpoint to get all payments with filters
@@ -257,13 +271,9 @@ async def admin_get_payments(
     result = []
     for payment in payments:
         items = await db.scalars(
-            select(PaymentItemsModel)
-            .where(PaymentItemsModel.payment_id == payment.id)
+            select(PaymentItemsModel).where(PaymentItemsModel.payment_id == payment.id)
         ).all()
 
-        result.append({
-            "payment": payment,
-            "items": items
-        })
+        result.append({"payment": payment, "items": items})
 
     return result
