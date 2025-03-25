@@ -61,3 +61,7 @@ async def send_reset_password_email_complete(email, login_link):
     )
     fast_mail = FastMail(mail_config)
     await fast_mail.send_message(message)
+
+
+async def send_payment_confirmation():
+    pass

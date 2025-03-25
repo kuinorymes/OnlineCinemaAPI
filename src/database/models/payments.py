@@ -11,10 +11,10 @@ from database.models.base import Base
 
 class PaymentStatusEnum(str, Enum):
     PENDING = "Pending"
-    PAID = "Paid"
     SUCCESSFUL = "Successful"
-    CANCELED = "Canceled"
+    FAILED = "Failed"
     REFUNDED = "Refunded"
+    CANCELED = "Canceled"
 
 
 class PaymentModel(Base):
@@ -37,10 +37,10 @@ class PaymentModel(Base):
     user: Mapped["UserModel"] = relationship(back_populates="payments")  # noqa: F821
     order: Mapped["OrderModel"] = relationship(back_populates="payments")  # noqa: F821
     payment_items: Mapped[List["PaymentItemsModel"]] = relationship(
-        back_populates="payment"
+        back_populates="payments"
     )
 
-    def repr(self) -> str:
+    def __repr__(self) -> str:
         return (
             f"<PaymentModel(id={self.id}, user_id={self.user_id}, order_id={self.order_id}, "
             f"amount={self.amount}, status='{self.status}', created_at='{self.created_at}')>"
@@ -57,12 +57,12 @@ class PaymentItemsModel(Base):
     )
     price_at_payment: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
 
-    payment: Mapped["PaymentModel"] = relationship(back_populates="payment_items")
+    payments: Mapped["PaymentModel"] = relationship(back_populates="payment_items")
     order_item: Mapped["OrderItemModel"] = relationship(  # noqa: F821
         back_populates="payment_items"
     )
 
-    def repr(self) -> str:
+    def __repr__(self) -> str:
         return (
             f"<PaymentItemsModel(id={self.id}, payment_id={self.payment_id}, "
             f"order_item_id={self.order_item_id}, price_at_payment={self.price_at_payment})>"

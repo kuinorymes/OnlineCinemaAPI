@@ -6,6 +6,8 @@ from src.database.models import User
 from config.settings import BaseAppSettings, TestingSettings, Settings
 from security.interfaces import JWTAuthManagerInterface
 from security.jwt_manager import JWTAuthManager
+from storages.interfaces import S3StorageInterface
+from storages.s3 import S3StorageClient
 
 
 def get_settings() -> BaseAppSettings:
@@ -46,3 +48,27 @@ def is_admin(current_user: User = Depends(get_current_user)) -> User:
             status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. Admins only."
         )
     return current_user
+  
+def get_s3_storage_client(
+    settings: BaseAppSettings = Depends(get_settings),
+) -> S3StorageInterface:
+    """
+    Retrieve an instance of the S3StorageInterface configured with the application settings.
+
+    This function instantiates an S3StorageClient using the provided settings, which include the S3 endpoint URL,
+    access credentials, and the bucket name. The returned client can be used to interact with an S3-compatible
+    storage service for file uploads and URL generation.
+
+    Args:
+        settings (BaseAppSettings, optional): The application settings,
+        provided via dependency injection from `get_settings`.
+
+    Returns:
+        S3StorageInterface: An instance of S3StorageClient configured with the appropriate S3 storage settings.
+    """
+    return S3StorageClient(
+        endpoint_url=settings.S3_ENDPOINT_URL,
+        access_key=settings.S3_ACCESS_KEY,
+        secret_key=settings.S3_SECRET_KEY,
+        bucket_name=settings.S3_BUCKET_NAME,
+    )

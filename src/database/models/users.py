@@ -6,6 +6,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Integer, String, Enum, Boolean, DateTime, ForeignKey, Date, Text
 
+from database.models.orders import OrderModel
 from security.password import verify_password
 from database.models.base import Base
 from database.models.utils import generate_token
@@ -56,6 +57,13 @@ class UserModel(Base):
     )
     group: Mapped[UserGroupModel] = relationship(
         "UserGroupModel", back_populates="users"
+    )
+
+    orders: Mapped[List["OrderModel"]] = relationship(  # noqa: F821
+        "OrderModel", back_populates="user", cascade="all, delete-orphan"
+    )
+    payments: Mapped[List["PaymentModel"]] = relationship(  # noqa: F821
+        "PaymentModel", back_populates="user"
     )
 
     profile: Mapped[Optional["UserProfileModel"]] = relationship(
