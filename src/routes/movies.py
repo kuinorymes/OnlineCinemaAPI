@@ -294,7 +294,7 @@ async def delete_movie(movie_id: int, db: AsyncSession = Depends(get_db)):
     if is_purchased:
         raise HTTPException(
             status_code=403,
-            detail="You cant delete this movie because someone purchased it"
+            detail="You cant delete this movie because someone purchased it",
         )
 
     await db.delete(movie)

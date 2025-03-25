@@ -90,6 +90,7 @@ class UserModel(Base):
     def verify_password(self, raw_password: str) -> bool:
         return verify_password(raw_password, self.hashed_password)
 
+
 class UserProfileModel(Base):
     __tablename__ = "user_profiles"
 
