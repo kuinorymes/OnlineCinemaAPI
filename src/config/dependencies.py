@@ -1,6 +1,5 @@
 import os
 
-from fastapi import Depends
 from fastapi import Depends, HTTPException, status
 from src.routes.auth import get_current_user
 from src.database.models import User
@@ -39,10 +38,11 @@ def get_jwt_auth_manager(
         secret_key_refresh=settings.SECRET_REFRESH_TOKEN_KEY,
         algorithm=settings.JWT_ALGORITHM,
     )
+
+
 def is_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.group.name != "ADMIN":
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied. Admins only."
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. Admins only."
         )
     return current_user
