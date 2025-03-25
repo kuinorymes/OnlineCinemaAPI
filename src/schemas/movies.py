@@ -92,3 +92,14 @@ class MovieCreateSchema(BaseModel):
     genres: List[str]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class MovieUpdateSchema(BaseModel):
+    name: Optional[str] = Field(None, max_length=255)
+    year: Optional[int] = Field(None, ge=0)
+    time: Optional[int] = Field(None, ge=0)
+    meta_score: Optional[float] = Field(None, ge=0, le=100)
+    imdb: Optional[float] = Field(None, ge=0, le=10)
+    description: Optional[str] = Field(None, max_length=255)
+    gross: Optional[float] = Field(None, ge=0)
+    price: Optional[float] = Field(None, ge=0)
