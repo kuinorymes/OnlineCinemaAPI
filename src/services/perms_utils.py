@@ -10,9 +10,9 @@ from routes.users import get_current_user, DB, oauth_scheme
 
 
 async def user_staff(
-        db: DB,
-        token: Annotated[str, Depends(oauth_scheme)],
-        jwt_manager: Annotated[JWTAuthManagerInterface, Depends(get_jwt_auth_manager)],
+    db: DB,
+    token: Annotated[str, Depends(oauth_scheme)],
+    jwt_manager: Annotated[JWTAuthManagerInterface, Depends(get_jwt_auth_manager)],
 ):
     user = await get_current_user(db, token, jwt_manager)
     await db.refresh(user, ["group"])

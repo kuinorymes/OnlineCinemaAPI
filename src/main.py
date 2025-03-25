@@ -30,7 +30,9 @@ app.include_router(users_router, tags=["users"], prefix=f"{api_version_prefix}/u
 app.include_router(
     orders_router, tags=["orders"], prefix=f"{api_version_prefix}/orders"
 )
-app.include_router(movies_router, tags=["movies"], prefix=f"{api_version_prefix}/theater")
+app.include_router(
+    movies_router, tags=["movies"], prefix=f"{api_version_prefix}/theater"
+)
 app.include_router(
     payments_router, tags=["payments"], prefix=f"{api_version_prefix}/payments"
 )

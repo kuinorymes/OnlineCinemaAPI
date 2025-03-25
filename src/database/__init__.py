@@ -4,6 +4,6 @@ from database.models.movies import (
     GenreModel,
     StarModel,
     DirectorModel,
-    CertificationModel
+    CertificationModel,
 )
 from database.session_sqlite import get_sqlite_db as get_db

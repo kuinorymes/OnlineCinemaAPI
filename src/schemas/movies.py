@@ -13,14 +13,14 @@ class GenreSchema(BaseModel):
 class StarSchema(BaseModel):
     id: int
     name: str
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 
 class DirectorSchema(BaseModel):
     id: int
     name: str
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 
