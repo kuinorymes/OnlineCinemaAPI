@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, engine
 from src.database.models import models
 
+from src.routes.users import get_current_user, get_db
 
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
@@ -22,12 +23,14 @@ def admin_view_user_cart(
     items = []
     for item in cart.items:
         movie = item.movie
-        items.append({
-            "cart_item_id": item.id,
-            "movie_id": movie.id,
-            "title": movie.title,
-            "price": float(movie.price),
-        })
+        items.append(
+            {
+                "cart_item_id": item.id,
+                "movie_id": movie.id,
+                "title": movie.title,
+                "price": float(movie.price),
+            }
+        )
     return {"items": items}
 
 
