@@ -4,9 +4,10 @@ from typing import List, Optional
 from fastapi import APIRouter, status, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from database.models.movies import MovieModel as Movie
-from database.models.orders import OrderModel as Order, OrderItemModel as OrderItem
+from database.models.orders import OrderModel as Order, OrderItemModel as OrderItem, OrderStatusEnum
 from database.session_sqlite import get_sqlite_db as get_db
 from schemas.orders import (
     OrderResponseSchema,
@@ -61,7 +62,7 @@ async def create_order(
     new_order = Order(
         user_id=current_user.id,
         total_amount=total_amount,
-        status="pending",
+        status=OrderStatusEnum.PENDING,
         order_items=order_items,
     )
 
@@ -121,13 +122,13 @@ async def cancel_order(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Order with id: {order_id} was not found",
         )
-    if order.status != "pending":
+    if order.status != OrderStatusEnum.PENDING:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only pending orders can be cancelled",
         )
 
-    order.status = "cancelled"
+    order.status = OrderStatusEnum.CANCELED
     try:
         await db.commit()
     except Exception as e:
@@ -151,7 +152,10 @@ async def get_all_orders(
             status_code=status.HTTP_403_FORBIDDEN, detail="You are not an administrator"
         )
 
-    query = select(Order)
+    query = select(Order).options(
+        selectinload(Order.user),
+        selectinload(Order.order_items)
+    )
     if status_filter:
         query = query.where(Order.status == status_filter)
     result = await db.execute(query)
