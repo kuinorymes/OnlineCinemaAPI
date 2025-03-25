@@ -7,7 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from database.models.movies import MovieModel as Movie
-from database.models.orders import OrderModel as Order, OrderItemModel as OrderItem, OrderStatusEnum
+from database.models.orders import (
+    OrderModel as Order,
+    OrderItemModel as OrderItem,
+    OrderStatusEnum,
+)
 from database.session_sqlite import get_sqlite_db as get_db
 from schemas.orders import (
     OrderResponseSchema,
@@ -153,8 +157,7 @@ async def get_all_orders(
         )
 
     query = select(Order).options(
-        selectinload(Order.user),
-        selectinload(Order.order_items)
+        selectinload(Order.user), selectinload(Order.order_items)
     )
     if status_filter:
         query = query.where(Order.status == status_filter)

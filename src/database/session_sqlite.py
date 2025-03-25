@@ -18,6 +18,7 @@ async def get_sqlite_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSQLiteSessionLocal() as session:
         yield session
 
+
 @asynccontextmanager
 async def get_sqlite_db_contextmanager() -> AsyncGenerator[AsyncSession, None]:
     """
