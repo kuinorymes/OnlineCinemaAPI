@@ -5,11 +5,7 @@ from typing import Optional
 from datetime import date
 
 from database.models.users import GenderEnum
-from validation.profiles import (
-    validate_name,
-    validate_image,
-    validate_birth_date
-)
+from validation.profiles import validate_name, validate_image, validate_birth_date
 
 
 class UserProfileResponseSchema(BaseModel):
@@ -42,13 +38,13 @@ class ProfileCreateRequestSchema(BaseModel):
 
     @classmethod
     def from_form(
-            cls,
-            first_name: str = Form(...),
-            last_name: str = Form(...),
-            gender: GenderEnum = Form(...),
-            date_of_birth: date = Form(...),
-            info: str = Form(...),
-            avatar: UploadFile = File(...)
+        cls,
+        first_name: str = Form(...),
+        last_name: str = Form(...),
+        gender: GenderEnum = Form(...),
+        date_of_birth: date = Form(...),
+        info: str = Form(...),
+        avatar: UploadFile = File(...),
     ) -> "ProfileCreateRequestSchema":
         return cls(
             first_name=first_name,
@@ -56,7 +52,7 @@ class ProfileCreateRequestSchema(BaseModel):
             gender=gender,
             date_of_birth=date_of_birth,
             info=info,
-            avatar=avatar
+            avatar=avatar,
         )
 
     @field_validator("first_name", "last_name")
@@ -68,12 +64,14 @@ class ProfileCreateRequestSchema(BaseModel):
         except ValueError as e:
             raise HTTPException(
                 status_code=422,
-                detail=[{
-                    "type": "value_error",
-                    "loc": ["first_name" if "first_name" in name else "last_name"],
-                    "msg": str(e),
-                    "input": name
-                }]
+                detail=[
+                    {
+                        "type": "value_error",
+                        "loc": ["first_name" if "first_name" in name else "last_name"],
+                        "msg": str(e),
+                        "input": name,
+                    }
+                ],
             )
 
     @field_validator("avatar")
@@ -85,12 +83,14 @@ class ProfileCreateRequestSchema(BaseModel):
         except ValueError as e:
             raise HTTPException(
                 status_code=422,
-                detail=[{
-                    "type": "value_error",
-                    "loc": ["avatar"],
-                    "msg": str(e),
-                    "input": avatar.filename
-                }]
+                detail=[
+                    {
+                        "type": "value_error",
+                        "loc": ["avatar"],
+                        "msg": str(e),
+                        "input": avatar.filename,
+                    }
+                ],
             )
 
     @field_validator("date_of_birth")
@@ -102,12 +102,14 @@ class ProfileCreateRequestSchema(BaseModel):
         except ValueError as e:
             raise HTTPException(
                 status_code=422,
-                detail=[{
-                    "type": "value_error",
-                    "loc": ["date_of_birth"],
-                    "msg": str(e),
-                    "input": str(date_of_birth)
-                }]
+                detail=[
+                    {
+                        "type": "value_error",
+                        "loc": ["date_of_birth"],
+                        "msg": str(e),
+                        "input": str(date_of_birth),
+                    }
+                ],
             )
 
     @field_validator("info")
@@ -117,11 +119,13 @@ class ProfileCreateRequestSchema(BaseModel):
         if not cleaned_info:
             raise HTTPException(
                 status_code=422,
-                detail=[{
-                    "type": "value_error",
-                    "loc": ["info"],
-                    "msg": "Info field cannot be empty or contain only spaces.",
-                    "input": info
-                }]
+                detail=[
+                    {
+                        "type": "value_error",
+                        "loc": ["info"],
+                        "msg": "Info field cannot be empty or contain only spaces.",
+                        "input": info,
+                    }
+                ],
             )
         return cleaned_info

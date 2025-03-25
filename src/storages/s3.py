@@ -16,11 +16,7 @@ from storages.interfaces import S3StorageInterface
 class S3StorageClient(S3StorageInterface):
 
     def __init__(
-        self,
-        endpoint_url: str,
-        access_key: str,
-        secret_key: str,
-        bucket_name: str
+        self, endpoint_url: str, access_key: str, secret_key: str, bucket_name: str
     ):
         """
         Initialize the asynchronous S3 Storage Client using an aioboto3 Session.
@@ -41,7 +37,9 @@ class S3StorageClient(S3StorageInterface):
             aws_secret_access_key=self._secret_key,
         )
 
-    async def upload_file(self, file_name: str, file_data: Union[bytes, bytearray]) -> None:
+    async def upload_file(
+        self, file_name: str, file_data: Union[bytes, bytearray]
+    ) -> None:
         """
         Asynchronously upload a file to the S3-compatible storage.
 
@@ -61,7 +59,7 @@ class S3StorageClient(S3StorageInterface):
                     Bucket=self._bucket_name,
                     Key=file_name,
                     Body=file_data,
-                    ContentType="image/jpeg"
+                    ContentType="image/jpeg",
                 )
         except (ConnectionError, HTTPClientError, NoCredentialsError) as e:
             raise S3ConnectionError(f"Failed to connect to S3 storage: {str(e)}") from e

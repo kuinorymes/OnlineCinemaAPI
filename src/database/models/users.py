@@ -79,9 +79,7 @@ class UserModel(Base):
     )
 
     orders: Mapped[List["OrderModel"]] = relationship(
-        "OrderModel",
-        back_populates="user",
-        cascade="all, delete-orphan"
+        "OrderModel", back_populates="user", cascade="all, delete-orphan"
     )
 
     def verify_password(self, raw_password: str) -> bool:

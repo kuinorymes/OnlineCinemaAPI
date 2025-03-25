@@ -1,7 +1,11 @@
 import asyncio
 from celery import shared_task
 from sqlalchemy import select
-from database.models.users import TokenBaseModel, PasswordResetTokenModel, ActivationTokenModel
+from database.models.users import (
+    TokenBaseModel,
+    PasswordResetTokenModel,
+    ActivationTokenModel,
+)
 from datetime import datetime
 
 from database.session_sqlite import AsyncSQLiteSessionLocal

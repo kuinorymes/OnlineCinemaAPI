@@ -15,6 +15,6 @@ app.conf.result_backend = settings.CELERY_BACKEND_URL
 app.conf.beat_schedule = {
     "cleanup_expired_tokens": {
         "task": "celery_app.tasks.delete_expired_tokens_wrapper",
-        "schedule": crontab()
+        "schedule": crontab(),
     }
 }

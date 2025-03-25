@@ -42,7 +42,7 @@ def get_jwt_auth_manager(
 
 
 def get_s3_storage_client(
-    settings: BaseAppSettings = Depends(get_settings)
+    settings: BaseAppSettings = Depends(get_settings),
 ) -> S3StorageInterface:
     """
     Retrieve an instance of the S3StorageInterface configured with the application settings.
@@ -62,5 +62,5 @@ def get_s3_storage_client(
         endpoint_url=settings.S3_ENDPOINT_URL,
         access_key=settings.S3_ACCESS_KEY,
         secret_key=settings.S3_SECRET_KEY,
-        bucket_name=settings.S3_BUCKET_NAME
+        bucket_name=settings.S3_BUCKET_NAME,
     )
