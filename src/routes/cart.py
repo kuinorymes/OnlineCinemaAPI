@@ -1,8 +1,8 @@
 from fastapi import FastAPI, HTTPException, Depends, status
 from sqlalchemy.orm import Session
-from database import SessionLocal, engine
+from src.database import SessionLocal, engine
 from src.database.models import models
-
+from src.config.dependencies import is_admin
 from src.routes.users import get_current_user, get_db
 
 models.Base.metadata.create_all(bind=engine)
