@@ -6,12 +6,14 @@ from sqlalchemy import select, delete
 from sqlalchemy.orm import joinedload
 from starlette import status
 from typing import Annotated, cast
+from pydantic import HttpUrl
 from datetime import datetime, timezone, timedelta
 
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 from config import BaseAppSettings
 from exceptions.security import BaseSecurityError
+from exceptions.storage import S3FileUploadError
 from schemas.users import (
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
@@ -26,6 +28,11 @@ from schemas.users import (
     ResetPasswordCompleteRequestSchema,
     ResetPasswordResponseSchema,
 )
+from schemas.profiles import (
+    UserProfileResponseSchema,
+    ProfileCreateRequestSchema,
+    ProfileCreateResponseSchema,
+)
 from notifications.tasks import (
     send_register_activate_email,
     send_reset_password_email,
@@ -38,6 +45,7 @@ from database.models.users import (
     ActivationTokenModel,
     RefreshTokenModel,
     PasswordResetTokenModel,
+    UserProfileModel,
 )
 from database.session_sqlite import get_sqlite_db
 from security.interfaces import JWTAuthManagerInterface
@@ -46,7 +54,9 @@ from security.password import hash_password
 from config.dependencies import (
     get_settings,
     get_jwt_auth_manager,
+    get_s3_storage_client,
 )
+from storages.interfaces import S3StorageInterface
 
 router = APIRouter()
 
@@ -460,3 +470,101 @@ async def reset_password_complete(
     )
 
     return {"message": "Your password has been successfully changed."}
+
+
+@router.get(
+    "/my-profile/",
+    status_code=status.HTTP_200_OK,
+    response_model=UserProfileResponseSchema,
+)
+async def get_user_profile(
+    db: DB,
+    user: Annotated[UserModel, Depends(get_current_user)],
+    s3_client: Annotated[S3StorageInterface, Depends(get_s3_storage_client)],
+):
+    profile_stmt = select(UserProfileModel).where(UserProfileModel.user_id == user.id)
+    profile_result = await db.execute(profile_stmt)
+    profile = profile_result.scalar_one_or_none()
+
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You don't have a profile yet.",
+        )
+
+    avatar_url = await s3_client.get_file_url(profile.avatar)
+
+    return UserProfileResponseSchema(
+        first_name=profile.first_name,
+        last_name=profile.last_name,
+        gender=profile.gender,
+        date_of_birth=profile.date_of_birth,
+        info=profile.info,
+        avatar=cast(HttpUrl, avatar_url),
+    )
+
+
+@router.post(
+    "/create-profile/",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ProfileCreateResponseSchema,
+)
+async def create_profile(
+    data: Annotated[
+        ProfileCreateRequestSchema, Depends(ProfileCreateRequestSchema.from_form)
+    ],
+    user: Annotated[UserModel, Depends(get_current_user)],
+    db: DB,
+    s3_client: Annotated[S3StorageInterface, Depends(get_s3_storage_client)],
+):
+    profile_stmt = select(UserProfileModel).where(UserProfileModel.user_id == user.id)
+    profile_result = await db.execute(profile_stmt)
+    profile = profile_result.scalar_one_or_none()
+
+    if profile:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You already have a profile.",
+        )
+
+    avatar_bytes = await data.avatar.read()
+    avatar_key = f"avatars/{user.id}_{data.avatar.filename}"
+
+    try:
+        await s3_client.upload_file(
+            file_name=avatar_key,
+            file_data=avatar_bytes,
+        )
+    except S3FileUploadError as e:
+        print(f"Error uploading avatar to S3: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to upload avatar. Please try again later.",
+        )
+
+    new_profile = UserProfileModel(
+        user_id=user.id,
+        first_name=data.first_name,
+        last_name=data.last_name,
+        gender=data.gender,
+        date_of_birth=data.date_of_birth,
+        info=data.info,
+        avatar=avatar_key,
+    )
+
+    db.add(new_profile)
+    await db.commit()
+    await db.refresh(new_profile)
+
+    avatar_url = await s3_client.get_file_url(new_profile.avatar)
+
+    return ProfileCreateResponseSchema(
+        id=new_profile.id,
+        user_id=new_profile.user_id,
+        first_name=new_profile.first_name,
+        last_name=new_profile.last_name,
+        gender=new_profile.gender,
+        date_of_birth=new_profile.date_of_birth,
+        info=new_profile.info,
+        avatar=cast(HttpUrl, avatar_url),
+    )
