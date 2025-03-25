@@ -16,7 +16,7 @@ from src.database.models.base import Base
 class CartModel(Base):
     __tablename__ = "carts"
 
-    id1: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id"), unique=True, nullable=False
     )
@@ -32,7 +32,7 @@ class CartModel(Base):
 class CartItem(Base):
     __tablename__ = "cart_items"
 
-    id2: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     cart_id: Mapped[int] = mapped_column(ForeignKey("carts.id"), nullable=False)
     movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False)
     added_at: Mapped[datetime] = mapped_column(
