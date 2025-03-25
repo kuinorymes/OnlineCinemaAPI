@@ -34,7 +34,9 @@ class OrderModel(Base):
     order_items: Mapped[List["OrderItemModel"]] = relationship(
         back_populates="order", cascade="all, delete"
     )
-
+    payments: Mapped[List["PaymentModel"]] = relationship( # noqa: F821
+        "PaymentModel", back_populates="order"
+    )
 
 class OrderItemModel(Base):
     __tablename__ = "order_items"
@@ -46,3 +48,4 @@ class OrderItemModel(Base):
 
     order: Mapped["OrderModel"] = relationship(back_populates="order_items")
     movie: Mapped["MovieModel"] = relationship("MovieModel")  # noqa: F821
+    payment_items: Mapped["PaymentItemsModel"] = relationship(back_populates="order_item") # noqa: F821
