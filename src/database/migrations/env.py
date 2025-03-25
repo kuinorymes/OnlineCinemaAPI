@@ -6,9 +6,17 @@ from alembic import context
 
 from database.models import users, movies, orders, payments, shopping_cart  # noqa: F401
 from database.models.base import Base
+from config.dependencies import get_settings
 
+
+settings = get_settings()
+
+POSTGRES_DATABASE_URL = (f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@"
+                         f"{settings.POSTGRES_HOST}:{settings.POSTGRES_DB_PORT}/{settings.POSTGRES_DB}")
 
 config = context.config
+
+config.set_main_option("sqlalchemy.url", POSTGRES_DATABASE_URL)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

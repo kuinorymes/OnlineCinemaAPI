@@ -1,4 +1,4 @@
-FROM python:3.13-alpine
+FROM python:3.10
 
 ENV PYTHONFAULTHANDLER=1 \
     PYTHONUNBUFFERED=1 \
@@ -12,19 +12,19 @@ ENV POETRY_NO_INTERACTION=1 \
     POETRY_CACHE_DIR='/var/cache/pypoetry' \
     POETRY_HOME='/usr/local'
 
-RUN apk update && \
-    apk add --no-cache curl build-base && \
-    rm -rf /var/cache/apk/*
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl build-essential && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN pip install poetry
 
-WORKDIR /usr/src
+WORKDIR /usr/src/app
 
 COPY pyproject.toml .
 COPY poetry.lock .
-COPY .env .
+COPY alembic.ini .
 
 RUN poetry config virtualenvs.create false && \
     poetry install --no-interaction --no-ansi --no-root
 
-COPY src .
+COPY ./src .
