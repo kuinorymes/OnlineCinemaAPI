@@ -59,8 +59,8 @@ def get_s3_storage_client(
         S3StorageInterface: An instance of S3StorageClient configured with the appropriate S3 storage settings.
     """
     return S3StorageClient(
-        endpoint_url=settings.S3_STORAGE_ENDPOINT,
-        access_key=settings.S3_STORAGE_ACCESS_KEY,
-        secret_key=settings.S3_STORAGE_SECRET_KEY,
+        endpoint_url=settings.S3_ENDPOINT_URL,
+        access_key=settings.S3_ACCESS_KEY,
+        secret_key=settings.S3_SECRET_KEY,
         bucket_name=settings.S3_BUCKET_NAME
     )
