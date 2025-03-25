@@ -59,6 +59,13 @@ class UserModel(Base):
         "UserGroupModel", back_populates="users"
     )
 
+    orders: Mapped[List["OrderModel"]] = relationship(  # noqa: F821
+        "OrderModel", back_populates="user", cascade="all, delete-orphan"
+    )
+    payments: Mapped[List["PaymentModel"]] = relationship(  # noqa: F821
+        "PaymentModel", back_populates="user"
+    )
+
     profile: Mapped[Optional["UserProfileModel"]] = relationship(
         "UserProfileModel",
         back_populates="user",
@@ -76,10 +83,6 @@ class UserModel(Base):
     )
     refresh_tokens: Mapped[List["RefreshTokenModel"]] = relationship(
         "RefreshTokenModel", back_populates="user", cascade="all, delete-orphan"
-    )
-
-    orders: Mapped[List["OrderModel"]] = relationship(
-        "OrderModel", back_populates="user", cascade="all, delete-orphan"
     )
 
     def verify_password(self, raw_password: str) -> bool:

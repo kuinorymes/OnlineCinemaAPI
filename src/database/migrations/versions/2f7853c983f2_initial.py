@@ -1,8 +1,14 @@
-"""first
+"""Initial
 
+<<<<<<<< HEAD:src/database/migrations/versions/cb39d3acbead_first.py
 Revision ID: cb39d3acbead
 Revises: 
 Create Date: 2025-03-25 09:31:52.041039
+========
+Revision ID: 2f7853c983f2
+Revises: 
+Create Date: 2025-03-24 17:54:48.528463
+>>>>>>>> b3f416577b50141cd7aa559e9279578eb9bd0e98:src/database/migrations/versions/2f7853c983f2_initial.py
 
 """
 from typing import Sequence, Union
@@ -12,7 +18,11 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
+<<<<<<<< HEAD:src/database/migrations/versions/cb39d3acbead_first.py
 revision: str = 'cb39d3acbead'
+========
+revision: str = '2f7853c983f2'
+>>>>>>>> b3f416577b50141cd7aa559e9279578eb9bd0e98:src/database/migrations/versions/2f7853c983f2_initial.py
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -186,7 +196,7 @@ def upgrade() -> None:
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('order_id', sa.Integer(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('status', sa.Enum('PENDING', 'PAID', 'SUCCESSFUL', 'CANCELED', 'REFUNDED', name='paymentstatusenum'), nullable=False),
+    sa.Column('status', sa.Enum('SUCCESSFUL', 'CANCELED', 'REFUNDED', name='paymentstatusenum'), nullable=False),
     sa.Column('amount', sa.DECIMAL(precision=10, scale=2), nullable=False),
     sa.Column('external_payment_id', sa.String(length=255), nullable=True),
     sa.ForeignKeyConstraint(['order_id'], ['orders.id'], ),
