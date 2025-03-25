@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, engine # эти названия нужно подстроить
 from src.database.models import models # и эти тоже
 
-models.Base.metadata.create_all(bind=engine)
 
+models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 
