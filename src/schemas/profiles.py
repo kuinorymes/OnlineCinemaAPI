@@ -23,6 +23,7 @@ class UserProfileResponseSchema(BaseModel):
 
 class ProfileCreateResponseSchema(BaseModel):
     id: int
+    user_id: int
     first_name: Optional[str]
     last_name: Optional[str]
     avatar: Optional[HttpUrl]
@@ -34,7 +35,7 @@ class ProfileCreateResponseSchema(BaseModel):
 class ProfileCreateRequestSchema(BaseModel):
     first_name: str
     last_name: str
-    gender: str
+    gender: GenderEnum
     date_of_birth: date
     info: str
     avatar: UploadFile
@@ -44,7 +45,7 @@ class ProfileCreateRequestSchema(BaseModel):
             cls,
             first_name: str = Form(...),
             last_name: str = Form(...),
-            gender: str = Form(...),
+            gender: GenderEnum = Form(...),
             date_of_birth: date = Form(...),
             info: str = Form(...),
             avatar: UploadFile = File(...)

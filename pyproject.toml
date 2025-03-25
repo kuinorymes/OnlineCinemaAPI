@@ -81,6 +81,7 @@ dependencies = [
     "fastapi-mail (>=1.4.2,<2.0.0)",
     "pillow (>=11.1.0,<12.0.0)",
     "aioboto3 (>=14.1.0,<15.0.0)",
+    "python-multipart (>=0.0.20,<0.0.21)",
 ]
 
 [tool.black]
