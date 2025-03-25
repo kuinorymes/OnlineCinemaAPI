@@ -49,6 +49,6 @@ class OrderItemModel(Base):
 
     order: Mapped["OrderModel"] = relationship(back_populates="order_items")
     movie: Mapped["MovieModel"] = relationship("MovieModel")  # noqa: F821
-    payment_items: Mapped["PaymentItemsModel"] = relationship(
+    payment_items: Mapped["PaymentItemsModel"] = relationship(  # noqa: F821
         back_populates="order_item"
-    )  # noqa: F821
+    )
