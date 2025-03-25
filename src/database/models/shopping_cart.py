@@ -12,6 +12,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from database.models.base import Base
 
+
 class CartItem(Base):
     __tablename__ = "cart_items"
 
@@ -27,6 +28,7 @@ class CartItem(Base):
 
     __table_args__ = (UniqueConstraint("cart_id", "movie_id", name="_cart_movie_uc"),)
 
+
 class CartModel(Base):
     __tablename__ = "carts"
 
@@ -41,5 +43,3 @@ class CartModel(Base):
     items: Mapped[List["CartItem"]] = relationship(
         "CartItem", back_populates="cart", cascade="all, delete-orphan"
     )
-
-
