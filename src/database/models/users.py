@@ -58,10 +58,10 @@ class UserModel(Base):
         "UserGroupModel", back_populates="users"
     )
 
-    orders: Mapped[List["OrderModel"]] = relationship(
+    orders: Mapped[List["OrderModel"]] = relationship(  # noqa: F821
         "OrderModel", back_populates="user", cascade="all, delete-orphan"
     )
-    payments: Mapped[List["PaymentModel"]] = relationship(
+    payments: Mapped[List["PaymentModel"]] = relationship(  # noqa: F821
         "PaymentModel", back_populates="user"
     )
 

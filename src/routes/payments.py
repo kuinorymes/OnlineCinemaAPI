@@ -21,7 +21,8 @@ from services.stripe_utils import create_checkout_session
 
 router = APIRouter()
 
-stripe.api_key = "sk_test_51QxBPLKX7EO9LjLpMK58n2sEjFFAqE11RuyUCFgTIvLSS7uH4Ho4jLmeNmL224hallbOWXxih3v7XKIbGkp4TMhw00oFPR3ImN"
+stripe.api_key = ("sk_test_51QxBPLKX7EO9LjLpMK58n2sEjFFAqE11RuyUCF"
+                  "gTIvLSS7uH4Ho4jLmeNmL224hallbOWXxih3v7XKIbGkp4TMhw00oFPR3ImN")
 endpoint_secret = (
     "whsec_f61d76fd5229d4fc777431940843508ab66afec305fb243e17b50ed55cb17f3a"
 )
@@ -189,21 +190,21 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_sqlite
 
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=400, detail="Invalid payload")
-    except stripe.error.SignatureVerificationError as e:
+    except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid signature")
 
     event_type = event["type"]
     session = event["data"]["object"]
 
     if event_type == "checkout.session.completed":
-        payment_intent_id = session.get("payment_intent")
+        # payment_intent_id = session.get("payment_intent")
         payment_id = session.get("id")
         amount_received = session.get("amount_received") / 100
 
         order_id = session.get("client_reference_id")
-        payment_method_id = session.get("payment_method")
+        # payment_method_id = session.get("payment_method")
 
         new_payment = PaymentModel(
             user_id=session["customer"],
