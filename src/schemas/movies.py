@@ -17,6 +17,7 @@ class GenreListResponseSchema(GenreSchema):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class StarSchema(BaseModel):
     id: int
     name: str

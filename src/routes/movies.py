@@ -8,7 +8,12 @@ from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models.movies import CommentModel, MovieVoteModel, MoviesFavoritesModel, MoviesGenresModel
+from database.models.movies import (
+    CommentModel,
+    MovieVoteModel,
+    MoviesFavoritesModel,
+    MoviesGenresModel,
+)
 from database.models.orders import OrderItemModel
 from database.models.users import UserModel
 
@@ -27,8 +32,14 @@ from database import (
     DirectorModel,
     CertificationModel,
 )
-from schemas.movies import MovieCommentBaseSchema, MovieCommentDetailSchema, VoteSchema, GenreSchema, \
-    GenreListResponseSchema, GenreDetailResponseSchema
+from schemas.movies import (
+    MovieCommentBaseSchema,
+    MovieCommentDetailSchema,
+    VoteSchema,
+    GenreSchema,
+    GenreListResponseSchema,
+    GenreDetailResponseSchema,
+)
 
 from services import user_staff
 from routes.users import get_current_user  # noqa: F811
@@ -43,13 +54,13 @@ router = APIRouter()
     response_model=list[GenreListResponseSchema],
 )
 async def genres_list(
-        db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> list[GenreListResponseSchema]:
     stmt = (
         select(
             GenreModel.id,
             GenreModel.name,
-            func.count(MoviesGenresModel.c.movie_id).label("movie_count")
+            func.count(MoviesGenresModel.c.movie_id).label("movie_count"),
         )
         .outerjoin(MoviesGenresModel, GenreModel.id == MoviesGenresModel.c.genre_id)
         .group_by(GenreModel.id, GenreModel.name)
@@ -62,7 +73,7 @@ async def genres_list(
         GenreListResponseSchema(
             id=genre_id,
             name=name,
-            movie_count=movie_count if movie_count is not None else 0
+            movie_count=movie_count if movie_count is not None else 0,
         )
         for genre_id, name, movie_count in genres
     ]
@@ -74,8 +85,8 @@ async def genres_list(
     response_model=GenreDetailResponseSchema,
 )
 async def genre_detail(
-        genre_id: int,
-        db: AsyncSession = Depends(get_db),
+    genre_id: int,
+    db: AsyncSession = Depends(get_db),
 ) -> GenreDetailResponseSchema:
     stmt = (
         select(GenreModel)
@@ -464,7 +475,7 @@ async def update_movie(
         }
     },
     response_model=MovieCommentDetailSchema,
-    status_code=201
+    status_code=201,
 )
 async def add_comment(
     movie_id: int,
@@ -517,7 +528,7 @@ async def add_comment(
             },
         },
     },
-    status_code=204
+    status_code=204,
 )
 async def delete_comment(
     movie_id: int,
@@ -647,7 +658,7 @@ async def vote_movie(
             },
         },
     },
-    status_code=204
+    status_code=204,
 )
 async def delete_vote(
     movie_id: int,
@@ -840,7 +851,7 @@ async def add_to_favorites(
             },
         }
     },
-    status_code=204
+    status_code=204,
 )
 async def remove_from_favorites(
     movie_id: int,
