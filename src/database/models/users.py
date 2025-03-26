@@ -86,6 +86,9 @@ class UserModel(Base):
     cart: Mapped["CartModel"] = relationship(  # noqa: F821
         "CartModel", back_populates="user", uselist=False
     )
+    votes: Mapped[list["MovieVoteModel"]] = relationship(  # noqa: F821
+        "MovieVoteModel", back_populates="user", cascade="all, delete-orphan"
+    )
 
     def verify_password(self, raw_password: str) -> bool:
         return verify_password(raw_password, self.hashed_password)
