@@ -2,13 +2,13 @@ from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import exists
+from sqlalchemy import exists, delete, insert
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models.movies import CommentModel, MovieVoteModel
+from database.models.movies import CommentModel, MovieVoteModel, MoviesFavoritesModel
 from database.models.orders import OrderItemModel
 from database.models.users import UserModel
 
@@ -278,7 +278,9 @@ async def create_movie(
         )
         db.add(movie)
         await db.commit()
-        await db.refresh(movie, ["genres", "directors", "certification", "stars"])
+        await db.refresh(
+            movie, ["genres", "directors", "certification", "stars", "comments"]
+        )
 
         return MovieDetailSchema.model_validate(movie)
 
@@ -488,6 +490,7 @@ async def delete_comment(
 
     return {"detail": "Comment deleted successfully"}
 
+
 @router.post(
     "/movies/{movie_id}/votes/",
     dependencies=[Depends(get_current_user)],
@@ -603,3 +606,207 @@ async def delete_vote(
     await db.commit()
 
     return {"detail": "Movie vote deleted successfully"}
+
+
+@router.get(
+    "/movies/favorites",
+    dependencies=[Depends(get_current_user)],
+    summary="Get your favorite movies",
+    response_model=MovieListResponseSchema,
+    responses={
+        404: {
+            "description": "Movies not found",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "You dont have your favorite movies"}
+                }
+            },
+        }
+    },
+)
+async def get_favorites(
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(10, ge=1, le=20, description="Items per page"),
+    search: Optional[str] = Query(None, description="Search movie title"),
+    year: Optional[int] = Query(None, description="Release year"),
+    genre: Optional[str] = Query(None, description="Filter by genre"),
+    sort_by: Optional[str] = Query("id", description="Field to sort by"),
+    order: Optional[str] = Query("desc", description="Sort order: 'asc' or 'desc'"),
+    user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> MovieListResponseSchema:
+    if order not in ("asc", "desc"):
+        raise HTTPException(
+            status_code=400, detail="Invalid order value. Must be 'asc' or 'desc'."
+        )
+    if not hasattr(MovieModel, sort_by):
+        raise HTTPException(status_code=400, detail=f"Invalid sort_by field: {sort_by}")
+
+    offset = (page - 1) * per_page
+
+    count_stmt = (
+        select(func.count())
+        .select_from(MovieModel)
+        .join(MoviesFavoritesModel, MoviesFavoritesModel.c.movie_id == MovieModel.id)
+        .where(MoviesFavoritesModel.c.user_id == user.id)
+    )
+
+    stmt = (
+        select(MovieModel)
+        .join(MoviesFavoritesModel, MoviesFavoritesModel.c.movie_id == MovieModel.id)
+        .where(MoviesFavoritesModel.c.user_id == user.id)
+    )
+
+    if search:
+        stmt = stmt.where(MovieModel.name.ilike(f"%{search}%"))
+        count_stmt = count_stmt.where(MovieModel.name.ilike(f"%{search}%"))
+    if year:
+        stmt = stmt.where(MovieModel.year == year)
+        count_stmt = count_stmt.where(MovieModel.year == year)
+    if genre:
+        stmt = stmt.where(MovieModel.genres.any(GenreModel.name.ilike(f"%{genre}%")))
+        count_stmt = count_stmt.where(
+            MovieModel.genres.any(GenreModel.name.ilike(f"%{genre}%"))
+        )
+
+    result_count = await db.execute(count_stmt)
+    total_items = result_count.scalar() or 0
+    if total_items == 0:
+        raise HTTPException(status_code=404, detail="No favorite movies found")
+
+    order_column = getattr(MovieModel, sort_by)
+    stmt = stmt.order_by(order_column.desc() if order == "desc" else order_column.asc())
+    stmt = stmt.offset(offset).limit(per_page)
+    result_movies = await db.execute(stmt)
+    movies = result_movies.scalars().all()
+    if not movies:
+        raise HTTPException(status_code=404, detail="No favorite movies found")
+
+    movie_list = [MovieListItemSchema.model_validate(movie) for movie in movies]
+    total_pages = (total_items + per_page - 1) // per_page
+
+    response = MovieListResponseSchema(
+        movies=movie_list,
+        prev_page=(
+            (
+                f"/favorites/?page={page-1}&per_page={per_page}"
+                f"&search={search or ''}&year={year or ''}&genre={genre or ''}&sort_by={sort_by}&order={order}"
+            )
+            if page > 1
+            else None
+        ),
+        next_page=(
+            (
+                f"/favorites/?page={page+1}&per_page={per_page}"
+                f"&search={search or ''}&year={year or ''}&genre={genre or ''}&sort_by={sort_by}&order={order}"
+            )
+            if page < total_pages
+            else None
+        ),
+        total_pages=total_pages,
+        total_items=total_items,
+    )
+    return response
+
+
+@router.post(
+    "/movies/{movie_id}/favorites/",
+    dependencies=[Depends(get_current_user)],
+    summary="Add your favorite movie to your favorite list",
+    responses={
+        404: {
+            "description": "Movie not found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Movie with the given ID was not found."}
+                }
+            },
+        }
+    },
+)
+async def add_to_favorites(
+    movie_id: int,
+    user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user_stmt = (
+        select(UserModel)
+        .where(UserModel.id == user.id)
+        .options(joinedload(UserModel.favorite_movies))
+    )
+    user_result = await db.execute(user_stmt)
+    user = user_result.scalars().first()
+
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    movie_stmt = select(MovieModel).where(MovieModel.id == movie_id)
+    result = await db.execute(movie_stmt)
+    movie = result.scalars().first()
+
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie not found")
+
+    check_stmt = select(MoviesFavoritesModel).where(
+        MoviesFavoritesModel.c.user_id == user.id,
+        MoviesFavoritesModel.c.movie_id == movie_id,
+    )
+    existing_favorite = await db.execute(check_stmt)
+
+    if existing_favorite.first():
+        raise HTTPException(status_code=400, detail="Movie already favorited")
+
+    user.favorite_movies.append(movie)
+    await db.commit()
+
+    return {"detail": "Movie favorited successfully"}
+
+
+@router.delete(
+    "/movies/{movie_id}/favorites/",
+    dependencies=[Depends(get_current_user)],
+    summary="Remove movie from your favorite list",
+    responses={
+        404: {
+            "description": "Movie not found or not in favorites.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Movie with the given ID was not found or not favorited."
+                    }
+                }
+            },
+        }
+    },
+)
+async def remove_from_favorites(
+    movie_id: int,
+    user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    movie_stmt = select(MovieModel).where(MovieModel.id == movie_id)
+    result = await db.execute(movie_stmt)
+    movie = result.scalars().first()
+
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie not found")
+
+    favorites_stmt = select(MoviesFavoritesModel).where(
+        MoviesFavoritesModel.c.movie_id == movie_id,
+        MoviesFavoritesModel.c.user_id == user.id,
+    )
+    favorite_record = await db.execute(favorites_stmt)
+    favorite = favorite_record.scalars().first()
+
+    if not favorite:
+        raise HTTPException(status_code=404, detail="Movie not favorited")
+
+    # Удаляем запись из избранного
+    delete_stmt = delete(MoviesFavoritesModel).where(
+        MoviesFavoritesModel.c.movie_id == movie_id,
+        MoviesFavoritesModel.c.user_id == user.id,
+    )
+    await db.execute(delete_stmt)
+    await db.commit()
+
+    return {"detail": "Movie removed from favorites successfully"}

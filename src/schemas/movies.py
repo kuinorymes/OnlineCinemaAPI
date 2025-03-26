@@ -68,7 +68,7 @@ class MovieDetailSchema(MovieBaseSchema):
     stars: List[StarSchema]
     directors: List[DirectorSchema]
     genres: List[GenreSchema]
-    comments: List[MovieCommentDetailSchema]
+    comments: Optional[List[MovieCommentDetailSchema]] = None
 
     model_config = ConfigDict(from_attributes=True)
 
