@@ -1,5 +1,7 @@
+import enum
 from typing import Optional
 
+import uuid
 from sqlalchemy import (
     String,
     Float,
@@ -11,10 +13,16 @@ from sqlalchemy import (
     Column,
     UUID,
     Integer,
+    Enum,
 )
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
-from database.models.base import Base
+from database import Base
+
+
+class VotesEnum(enum.Enum):
+    LIKE = "like"
+    DISLIKE = "dislike"
 
 
 MoviesGenresModel = Table(
@@ -66,6 +74,13 @@ MoviesDirectorsModel = Table(
         primary_key=True,
         nullable=False,
     ),
+)
+
+MoviesFavoritesModel = Table(
+    "favorites",
+    Base.metadata,
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("movie_id", ForeignKey("movies.id", ondelete="CASCADE"), nullable=False),
 )
 
 
@@ -129,14 +144,14 @@ class MovieModel(Base):
     __tablename__ = "movies"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    uuid: Mapped[UUID] = mapped_column(UUID, unique=True)
+    uuid: Mapped[UUID] = mapped_column(UUID, unique=True, default=uuid.uuid4())
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     year: Mapped[int] = mapped_column(Integer, nullable=False)  # release year
     time: Mapped[int] = mapped_column(
         Integer, nullable=False
     )  # movie duration in minutes
     imdb: Mapped[float] = mapped_column(Float, nullable=False)
-    votes: Mapped[int] = mapped_column(Integer, nullable=False)
+    votes_imdb: Mapped[int] = mapped_column(Integer, nullable=False)
     meta_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     gross: Mapped[float] = mapped_column(Float, nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
@@ -160,6 +175,16 @@ class MovieModel(Base):
     directors: Mapped[list["DirectorModel"]] = relationship(
         "DirectorModel", secondary=MoviesDirectorsModel, back_populates="movies"
     )
+    votes: Mapped[list["MovieVoteModel"]] = relationship(
+        "MovieVoteModel", back_populates="movie", cascade="all, delete-orphan"
+    )
+
+    comments: Mapped[list["CommentModel"]] = relationship(
+        "CommentModel", back_populates="movie", cascade="all, delete-orphan"
+    )
+    users_favorites: Mapped[list["UserModel"]] = relationship(
+        "UserModel", secondary=MoviesFavoritesModel, back_populates="favorite_movies"
+    )
 
     __table_args__ = (
         UniqueConstraint("name", "year", "time", name="unique_movie_constraint"),
@@ -171,3 +196,41 @@ class MovieModel(Base):
 
     def __repr__(self):
         return f"<Movie(name='{self.name}', year='{self.year}', meta_score={self.meta_score})>"
+
+
+class CommentModel(Base):
+    __tablename__ = "comments"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False
+    )
+    movie_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("movies.id"), nullable=False
+    )
+
+    user: Mapped["UserModel"] = relationship(  # noqa: F821
+        "UserModel", back_populates="comments"
+    )
+    movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="comments")
+
+
+class MovieVoteModel(Base):
+    __tablename__ = "movie_votes"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    is_like: Mapped[VotesEnum] = mapped_column(Enum(VotesEnum), nullable=False)
+
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False
+    )
+    movie_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("movies.id"), nullable=False
+    )
+
+    user: Mapped["UserModel"] = relationship(  # noqa: F821
+        "UserModel", back_populates="votes"
+    )
+    movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="votes")

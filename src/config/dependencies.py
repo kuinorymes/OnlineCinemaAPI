@@ -1,7 +1,6 @@
 import os
 
 from fastapi import Depends
-
 from config.settings import BaseAppSettings, TestingSettings, Settings
 from security.interfaces import JWTAuthManagerInterface
 from security.jwt_manager import JWTAuthManager

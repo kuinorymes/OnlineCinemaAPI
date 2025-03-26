@@ -22,3 +22,17 @@ async def user_moderator_or_admin(
         return None
     except Exception:
         return None
+
+
+async def user_staff(
+    db: DB,
+    token: Annotated[str, Depends(oauth_scheme)],
+    jwt_manager: Annotated[JWTAuthManagerInterface, Depends(get_jwt_auth_manager)],
+):
+    user = await get_current_user(db, token, jwt_manager)
+    await db.refresh(user, ["group"])
+    if user.group.name not in [UserGroupEnum.MODERATOR, UserGroupEnum.ADMIN]:
+        raise HTTPException(
+            status_code=403, detail="You are not authorized to perform this action."
+        )
+    return user

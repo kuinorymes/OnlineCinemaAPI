@@ -6,9 +6,9 @@ from typing import List, Optional
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Integer, String, Enum, Boolean, DateTime, ForeignKey, Date, Text
 
-from database.models.orders import OrderModel
+from database.models.movies import MoviesFavoritesModel
 from security.password import verify_password
-from database.models.base import Base
+from database import Base
 from database.models.utils import generate_token
 
 
@@ -83,6 +83,19 @@ class UserModel(Base):
     )
     refresh_tokens: Mapped[List["RefreshTokenModel"]] = relationship(
         "RefreshTokenModel", back_populates="user", cascade="all, delete-orphan"
+    )
+    cart: Mapped["CartModel"] = relationship(  # noqa: F821
+        "CartModel", back_populates="user", uselist=False
+    )
+    comments: Mapped[list["CommentModel"]] = relationship(  # noqa: F821
+        "CommentModel",
+        back_populates="user",
+    )
+    votes: Mapped[list["MovieVoteModel"]] = relationship(  # noqa: F821
+        "MovieVoteModel", back_populates="user", cascade="all, delete-orphan"
+    )
+    favorite_movies: Mapped[list["MovieModel"]] = relationship(  # noqa: F821
+        "MovieModel", secondary=MoviesFavoritesModel, back_populates="users_favorites"
     )
 
     def verify_password(self, raw_password: str) -> bool:
