@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models.movies import CommentModel, MovieVoteModel, MoviesFavoritesModel
+from database.models.movies import CommentModel, MovieVoteModel, MoviesFavoritesModel, MoviesGenresModel
 from database.models.orders import OrderItemModel
 from database.models.users import UserModel
 
@@ -27,13 +27,72 @@ from database import (
     DirectorModel,
     CertificationModel,
 )
-from schemas.movies import MovieCommentBaseSchema, MovieCommentDetailSchema, VoteSchema
+from schemas.movies import MovieCommentBaseSchema, MovieCommentDetailSchema, VoteSchema, GenreSchema, \
+    GenreListResponseSchema, GenreDetailResponseSchema
 
 from services import user_staff
 from routes.users import get_current_user  # noqa: F811
 
 
 router = APIRouter()
+
+
+@router.get(
+    "/movies/genres/",
+    summary="Get all genres",
+    response_model=list[GenreListResponseSchema],
+)
+async def genres_list(
+        db: AsyncSession = Depends(get_db),
+) -> list[GenreListResponseSchema]:
+    stmt = (
+        select(
+            GenreModel.id,
+            GenreModel.name,
+            func.count(MoviesGenresModel.c.movie_id).label("movie_count")
+        )
+        .outerjoin(MoviesGenresModel, GenreModel.id == MoviesGenresModel.c.genre_id)
+        .group_by(GenreModel.id, GenreModel.name)
+    )
+
+    result = await db.execute(stmt)
+    genres = result.all()
+
+    return [
+        GenreListResponseSchema(
+            id=genre_id,
+            name=name,
+            movie_count=movie_count if movie_count is not None else 0
+        )
+        for genre_id, name, movie_count in genres
+    ]
+
+
+@router.get(
+    "/movies/genres/{genre_id}/",
+    summary="Get a genre with related movies list",
+    response_model=GenreDetailResponseSchema,
+)
+async def genre_detail(
+        genre_id: int,
+        db: AsyncSession = Depends(get_db),
+) -> GenreDetailResponseSchema:
+    stmt = (
+        select(GenreModel)
+        .where(GenreModel.id == genre_id)
+        .options(joinedload(GenreModel.movies))
+    )
+    result = await db.execute(stmt)
+    genre_movies = result.scalars().first()
+
+    if not genre_movies:
+        raise HTTPException(status_code=404, detail="Genre not found")
+
+    return GenreDetailResponseSchema(
+        id=genre_movies.id,
+        name=genre_movies.name,
+        movies=genre_movies.movies,
+    )
 
 
 @router.get(
@@ -405,6 +464,7 @@ async def update_movie(
         }
     },
     response_model=MovieCommentDetailSchema,
+    status_code=201
 )
 async def add_comment(
     movie_id: int,
@@ -457,6 +517,7 @@ async def add_comment(
             },
         },
     },
+    status_code=204
 )
 async def delete_comment(
     movie_id: int,
@@ -586,6 +647,7 @@ async def vote_movie(
             },
         },
     },
+    status_code=204
 )
 async def delete_vote(
     movie_id: int,
@@ -778,6 +840,7 @@ async def add_to_favorites(
             },
         }
     },
+    status_code=204
 )
 async def remove_from_favorites(
     movie_id: int,
@@ -801,7 +864,6 @@ async def remove_from_favorites(
     if not favorite:
         raise HTTPException(status_code=404, detail="Movie not favorited")
 
-    # Удаляем запись из избранного
     delete_stmt = delete(MoviesFavoritesModel).where(
         MoviesFavoritesModel.c.movie_id == movie_id,
         MoviesFavoritesModel.c.user_id == user.id,
