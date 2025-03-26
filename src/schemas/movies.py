@@ -2,6 +2,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, UUID4
 
+from database.models.movies import VotesEnum
+
 
 class GenreSchema(BaseModel):
     id: int
@@ -37,7 +39,7 @@ class MovieBaseSchema(BaseModel):
     time: int = Field(..., ge=0)
     meta_score: float = Field(..., ge=0, le=100)
     imdb: float = Field(..., ge=0, le=10)
-    votes: int = Field(..., ge=0)
+    votes_imdb: int = Field(..., ge=0)
     gross: Optional[float] = Field(..., ge=0)
     price: Optional[float] = Field(..., ge=0)
     certification: CertificationSchema
@@ -82,7 +84,7 @@ class MovieCreateSchema(BaseModel):
     time: int = Field(..., ge=0)
     meta_score: float = Field(..., ge=0, le=100)
     imdb: float = Field(..., ge=0, le=10)
-    votes: int = Field(..., ge=0)
+    votes_imdb: int = Field(..., ge=0)
     gross: Optional[float] = Field(..., ge=0)
     price: Optional[float] = Field(..., ge=0)
     certification: str
@@ -103,3 +105,11 @@ class MovieUpdateSchema(BaseModel):
     description: Optional[str] = Field(None, max_length=255)
     gross: Optional[float] = Field(None, ge=0)
     price: Optional[float] = Field(None, ge=0)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class VoteSchema(BaseModel):
+    is_like: VotesEnum
+
+    model_config = ConfigDict(from_attributes=True)
