@@ -8,6 +8,7 @@ from sqlalchemy.sql import select, func
 from database.models.movies import CommentModel
 from database.models.orders import OrderItemModel
 from routes.users import get_current_user
+
 from schemas import (
     MovieListResponseSchema,
     MovieListItemSchema,
@@ -24,7 +25,9 @@ from database import (
     CertificationModel,
 )
 from schemas.movies import MovieCommentBaseSchema, MovieCommentDetailSchema
+
 from services import user_staff
+from routes.users import get_current_user
 
 
 router = APIRouter()
@@ -240,7 +243,7 @@ async def create_movie(
             year=movie_data.year,
             time=movie_data.time,
             imdb=movie_data.imdb,
-            votes=movie_data.votes,
+            votes_imdb=movie_data.votes_imdb,
             meta_score=movie_data.meta_score,
             gross=movie_data.gross,
             description=movie_data.description,
@@ -461,3 +464,81 @@ async def delete_comment(
     await db.commit()
 
     return {"detail": "Comment deleted successfully"}
+    vote_stmt = select(MovieVoteModel).where(
+        MovieVoteModel.movie_id == movie_id,
+        MovieVoteModel.user_id == user.id,
+    )
+    result = await db.execute(vote_stmt)
+    user_vote = result.scalars().first()
+
+    if user_vote:
+        user_vote.is_like = vote.is_like
+    else:
+        user_vote = MovieVoteModel(
+            movie_id=movie_id,
+            user_id=user.id,
+            is_like=vote.is_like,
+        )
+        db.add(user_vote)
+
+    await db.commit()
+    return {"detail": "Vote updated successfully"}
+
+
+@router.delete(
+    "/movies/{movie_id}/votes/",
+    dependencies=[Depends(get_current_user)],
+    summary="Remove your vote from a movie by ID",
+    description=("<h3>Remove your vote from a movie by ID.</h3>"),
+    responses={
+        404: {
+            "description": (
+                "Not Found. Either the movie with the given ID was not found "
+                "or the vote was not found."
+            ),
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "movieNotFound": {
+                            "summary": "Movie Not Found",
+                            "value": {
+                                "detail": "Movie with the given ID was not found."
+                            },
+                        },
+                        "voteNotFound": {
+                            "summary": "Vote Not Found",
+                            "value": {"detail": "Vote for the movie was not found."},
+                        },
+                    }
+                }
+            },
+        },
+        200: {
+            "description": "Movie vote updated",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Movie vote updated successfully."}
+                }
+            },
+        },
+    },
+)
+async def delete_vote(
+    movie_id: int,
+    user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = select(MovieVoteModel).where(
+        MovieVoteModel.movie_id == movie_id,
+        MovieVoteModel.user_id == user.id,
+    )
+    result = await db.execute(stmt)
+    voted = result.scalars().first()
+
+    if not voted:
+        raise HTTPException(status_code=404, detail="Vote didnt found")
+
+    await db.delete(voted)
+    await db.commit()
+
+    return {"detail": "Movie vote deleted successfully"}

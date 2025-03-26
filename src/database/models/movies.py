@@ -1,3 +1,4 @@
+import enum
 from typing import Optional
 
 import uuid
@@ -12,10 +13,16 @@ from sqlalchemy import (
     Column,
     UUID,
     Integer,
+    Enum,
 )
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from database import Base
+
+
+class VotesEnum(enum.Enum):
+    LIKE = "like"
+    DISLIKE = "dislike"
 
 
 MoviesGenresModel = Table(
@@ -137,7 +144,7 @@ class MovieModel(Base):
         Integer, nullable=False
     )  # movie duration in minutes
     imdb: Mapped[float] = mapped_column(Float, nullable=False)
-    votes: Mapped[int] = mapped_column(Integer, nullable=False)
+    votes_imdb: Mapped[int] = mapped_column(Integer, nullable=False)
     meta_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     gross: Mapped[float] = mapped_column(Float, nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
@@ -161,6 +168,9 @@ class MovieModel(Base):
     directors: Mapped[list["DirectorModel"]] = relationship(
         "DirectorModel", secondary=MoviesDirectorsModel, back_populates="movies"
     )
+    votes: Mapped[list["MovieVoteModel"]] = relationship(
+        "MovieVoteModel", back_populates="movie", cascade="all, delete-orphan"
+    )
 
     comments: Mapped[list["CommentModel"]] = relationship(
         "CommentModel", back_populates="movie", cascade="all, delete-orphan"
@@ -178,11 +188,20 @@ class MovieModel(Base):
         return f"<Movie(name='{self.name}', year='{self.year}', meta_score={self.meta_score})>"
 
 
+
 class CommentModel(Base):
     __tablename__ = "comments"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+      
+      
+class MovieVoteModel(Base):
+    __tablename__ = "movie_votes"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    is_like: Mapped[VotesEnum] = mapped_column(Enum(VotesEnum), nullable=False)
+
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=False
     )
@@ -194,3 +213,4 @@ class CommentModel(Base):
         "UserModel", back_populates="comments"
     )
     movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="comments")
+

@@ -89,6 +89,8 @@ class UserModel(Base):
     comments: Mapped[list["CommentModel"]] = relationship(  # noqa: F821
         "CommentModel",
         back_populates="user",
+    votes: Mapped[list["MovieVoteModel"]] = relationship(  # noqa: F821
+        "MovieVoteModel", back_populates="user", cascade="all, delete-orphan"
     )
 
     def verify_password(self, raw_password: str) -> bool:
