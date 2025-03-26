@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
 
@@ -10,15 +11,18 @@ from database.models.movies import MovieModel as Movie
 from database.models.orders import (
     OrderModel as Order,
     OrderItemModel as OrderItem,
-    OrderStatusEnum,
+    OrderStatusEnum, OrderItemModel,
 )
+from database.models.users import UserModel
 from database.session_sqlite import get_sqlite_db as get_db
 from schemas.orders import (
     OrderResponseSchema,
     OrderCreateSchema,
-    OrderListResponseSchema,
+    OrderListResponseSchema
 )
 from routes.users import get_current_user
+from schemas.payments import PaymentCreate
+from security.permissions import is_admin
 
 router = APIRouter()
 
@@ -36,6 +40,40 @@ async def create_order(
 
     movie_ids = [item.movie_id for item in order_data.items]
 
+    existing_orders = (
+        select(OrderItem.movie_id)
+        .join(Order, OrderItem.order_id == Order.id)
+        .where(Order.user_id == current_user.id, Order.status == OrderStatusEnum.PAID, OrderItem.movie_id.in_(movie_ids))
+    )
+
+    result = await db.execute(existing_orders)
+    purchased_movies = {row[0] for row in result.fetchall()}
+
+    if purchased_movies:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Movies with id: {list(purchased_movies)} already purchased."
+        )
+
+    pending_orders = (
+        select(Order.id)
+        .where(
+            Order.user_id == current_user.id,
+            Order.status == OrderStatusEnum.PENDING,
+            Order.id.in_(
+                select(OrderItem.order_id).where(OrderItem.movie_id.in_(movie_ids))
+            )
+        )
+    )
+    result = await db.execute(pending_orders)
+    existing_pending_orders = result.scalars().all()
+
+    if existing_pending_orders:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You already have pending orders with these movies"
+        )
+
     result = await db.execute(select(Movie).where(Movie.id.in_(movie_ids)))
     movies = result.scalars().all()
 
@@ -46,13 +84,9 @@ async def create_order(
             detail=f"Movies with ids: {missing_ids} was not found",
         )
 
+
     for item in order_data.items:
         movie = next((movie for movie in movies if movie.id == item.movie_id), None)
-        if not movie:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Movie with id: {item.movie_id} was not found",
-            )
         order_item = OrderItem(movie_id=movie.id, price_at_order=movie.price)
         order_items.append(order_item)
         total_amount += movie.price
@@ -78,11 +112,10 @@ async def create_order(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Something went wrong",
+            detail="Something went during order creation",
         ) from e
 
     return new_order
-
 
 @router.get("/", response_model=OrderListResponseSchema)
 async def get_user_orders(
@@ -144,43 +177,3 @@ async def cancel_order(
 
     return {"detail": "Order canceled successfully"}
 
-
-@router.get("/admin/", response_model=OrderListResponseSchema)
-async def get_all_orders(
-    status_filter: Optional[str] = None,
-    db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
-    if current_user.group.name.value != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="You are not an administrator"
-        )
-
-    query = select(Order).options(
-        selectinload(Order.user), selectinload(Order.order_items)
-    )
-    if status_filter:
-        query = query.where(Order.status == status_filter)
-    result = await db.execute(query)
-    orders = result.scalars().all()
-    return OrderListResponseSchema(orders=orders)
-
-
-@router.get("/admin/{order_id}", response_model=OrderResponseSchema)
-async def get_order_details_admin(
-    order_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
-    if current_user.group.name.value != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="You are not an administrator"
-        )
-    result = await db.execute(select(Order).where(Order.id == order_id))
-    order = result.scalar_one_or_none()
-    if not order:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Order does not exist"
-        )
-
-    return order
