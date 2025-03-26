@@ -76,6 +76,13 @@ MoviesDirectorsModel = Table(
     ),
 )
 
+MoviesFavoritesModel = Table(
+    "favorites",
+    Base.metadata,
+    Column("user_id", ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("movie_id", ForeignKey("movies.id", ondelete="CASCADE"), nullable=False),
+)
+
 
 class GenreModel(Base):
     __tablename__ = "genres"
@@ -175,6 +182,9 @@ class MovieModel(Base):
     comments: Mapped[list["CommentModel"]] = relationship(
         "CommentModel", back_populates="movie", cascade="all, delete-orphan"
     )
+    users_favorites: Mapped[list["UserModel"]] = relationship(
+        "UserModel", secondary=MoviesFavoritesModel, back_populates="favorite_movies"
+    )
 
     __table_args__ = (
         UniqueConstraint("name", "year", "time", name="unique_movie_constraint"),
@@ -194,6 +204,18 @@ class CommentModel(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
 
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False
+    )
+    movie_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("movies.id"), nullable=False
+    )
+
+    user: Mapped["UserModel"] = relationship(  # noqa: F821
+        "UserModel", back_populates="comments"
+    )
+    movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="comments")
+
 
 class MovieVoteModel(Base):
     __tablename__ = "movie_votes"
@@ -209,6 +231,6 @@ class MovieVoteModel(Base):
     )
 
     user: Mapped["UserModel"] = relationship(  # noqa: F821
-        "UserModel", back_populates="comments"
+        "UserModel", back_populates="votes"
     )
-    movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="comments")
+    movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="votes")
