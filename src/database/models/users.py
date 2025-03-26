@@ -86,7 +86,7 @@ class UserModel(Base):
     cart: Mapped["CartModel"] = relationship(  # noqa: F821
         "CartModel", back_populates="user", uselist=False
     )
-    votes: Mapped[list["MovieVoteModel"]] = relationship(
+    votes: Mapped[list["MovieVoteModel"]] = relationship(  # noqa: F821
         "MovieVoteModel", back_populates="user", cascade="all, delete-orphan"
     )
 
