@@ -30,7 +30,9 @@ class OrderModel(Base):
         Numeric(10, 2), nullable=True
     )
 
-    user: Mapped["UserModel"] = relationship("UserModel", back_populates="orders", lazy="selectin")  # noqa: F821
+    user: Mapped["UserModel"] = relationship(
+        "UserModel", back_populates="orders", lazy="selectin"
+    )  # noqa: F821
     order_items: Mapped[List["OrderItemModel"]] = relationship(
         back_populates="order", lazy="selectin", cascade="all, delete"
     )

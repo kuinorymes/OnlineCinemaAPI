@@ -170,7 +170,9 @@ class RefreshTokenModel(TokenBaseModel):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    user: Mapped["UserModel"] = relationship("UserModel", back_populates="refresh_tokens")
+    user: Mapped["UserModel"] = relationship(
+        "UserModel", back_populates="refresh_tokens"
+    )
 
     @classmethod
     def create(

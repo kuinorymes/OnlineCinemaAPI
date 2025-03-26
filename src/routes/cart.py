@@ -5,7 +5,8 @@ from database.models.users import UserModel as User
 from database.models.shopping_cart import CartModel as Cart, CartItem
 from database.models.movies import MovieModel as Movie
 from security.permissions import is_admin
-#from database.session_sqlite import get_sqlite_db
+
+# from database.session_sqlite import get_sqlite_db
 from database.session_postgresql import get_postgres_db
 from routes.users import get_current_user
 
