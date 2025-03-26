@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Alembic migrations
+src/database/migrations/versions/
+
 # C extensions
 *.so
 
