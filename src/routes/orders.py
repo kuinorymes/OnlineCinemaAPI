@@ -11,14 +11,15 @@ from database.models.movies import MovieModel as Movie
 from database.models.orders import (
     OrderModel as Order,
     OrderItemModel as OrderItem,
-    OrderStatusEnum, OrderItemModel,
+    OrderStatusEnum,
+    OrderItemModel,
 )
 from database.models.users import UserModel
 from database.session_sqlite import get_sqlite_db as get_db
 from schemas.orders import (
     OrderResponseSchema,
     OrderCreateSchema,
-    OrderListResponseSchema
+    OrderListResponseSchema,
 )
 from routes.users import get_current_user
 from schemas.payments import PaymentCreate
@@ -43,7 +44,11 @@ async def create_order(
     existing_orders = (
         select(OrderItem.movie_id)
         .join(Order, OrderItem.order_id == Order.id)
-        .where(Order.user_id == current_user.id, Order.status == OrderStatusEnum.PAID, OrderItem.movie_id.in_(movie_ids))
+        .where(
+            Order.user_id == current_user.id,
+            Order.status == OrderStatusEnum.PAID,
+            OrderItem.movie_id.in_(movie_ids),
+        )
     )
 
     result = await db.execute(existing_orders)
@@ -52,18 +57,15 @@ async def create_order(
     if purchased_movies:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Movies with id: {list(purchased_movies)} already purchased."
+            detail=f"Movies with id: {list(purchased_movies)} already purchased.",
         )
 
-    pending_orders = (
-        select(Order.id)
-        .where(
-            Order.user_id == current_user.id,
-            Order.status == OrderStatusEnum.PENDING,
-            Order.id.in_(
-                select(OrderItem.order_id).where(OrderItem.movie_id.in_(movie_ids))
-            )
-        )
+    pending_orders = select(Order.id).where(
+        Order.user_id == current_user.id,
+        Order.status == OrderStatusEnum.PENDING,
+        Order.id.in_(
+            select(OrderItem.order_id).where(OrderItem.movie_id.in_(movie_ids))
+        ),
     )
     result = await db.execute(pending_orders)
     existing_pending_orders = result.scalars().all()
@@ -71,7 +73,7 @@ async def create_order(
     if existing_pending_orders:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"You already have pending orders with these movies"
+            detail="You already have pending orders with these movies",
         )
 
     result = await db.execute(select(Movie).where(Movie.id.in_(movie_ids)))
@@ -83,7 +85,6 @@ async def create_order(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Movies with ids: {missing_ids} was not found",
         )
-
 
     for item in order_data.items:
         movie = next((movie for movie in movies if movie.id == item.movie_id), None)
@@ -116,6 +117,7 @@ async def create_order(
         ) from e
 
     return new_order
+
 
 @router.get("/", response_model=OrderListResponseSchema)
 async def get_user_orders(
@@ -176,4 +178,3 @@ async def cancel_order(
         ) from e
 
     return {"detail": "Order canceled successfully"}
-

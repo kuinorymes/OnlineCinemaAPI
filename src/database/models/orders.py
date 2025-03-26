@@ -47,8 +47,12 @@ class OrderItemModel(Base):
     movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False)
     price_at_order: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
-    order: Mapped["OrderModel"] = relationship(back_populates="order_items", lazy="selectin")
-    movie: Mapped["MovieModel"] = relationship("MovieModel", lazy="selectin")  # noqa: F821
+    order: Mapped["OrderModel"] = relationship(
+        back_populates="order_items", lazy="selectin"
+    )
+    movie: Mapped["MovieModel"] = relationship(  # noqa: F821
+        "MovieModel", lazy="selectin"
+    )
     payment_items: Mapped["PaymentItemsModel"] = relationship(  # noqa: F821
         back_populates="order_item"
     )

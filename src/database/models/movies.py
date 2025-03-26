@@ -188,14 +188,13 @@ class MovieModel(Base):
         return f"<Movie(name='{self.name}', year='{self.year}', meta_score={self.meta_score})>"
 
 
-
 class CommentModel(Base):
     __tablename__ = "comments"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-      
-      
+
+
 class MovieVoteModel(Base):
     __tablename__ = "movie_votes"
 
@@ -213,4 +212,3 @@ class MovieVoteModel(Base):
         "UserModel", back_populates="comments"
     )
     movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="comments")
-
