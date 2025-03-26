@@ -1,282 +1,389 @@
-import stripe
-from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, List
 from datetime import datetime
+import stripe
+import os
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    Request,
+    Query,
+    BackgroundTasks,
+)
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional
 from fastapi.responses import JSONResponse
 
-from database.models.payments import PaymentModel, PaymentStatusEnum, PaymentItemsModel
+from database.models.orders import OrderModel, OrderStatusEnum
+from database.models.payments import PaymentModel, PaymentStatusEnum
 from database.models.users import UserModel
 from database.session_sqlite import get_sqlite_db
+from exceptions.payment_exceptions import (
+    OrderNotFoundError,
+    InvalidOrderStatusError,
+    PaymentCreationError,
+    OrderAlreadyPaidError,
+)
+from notifications.tasks import send_payment_confirmation
 from routes.users import get_current_user
 from schemas.payments import (
-    PaymentCreate,
-    PaymentHistoryResponse,
     PaymentResponse,
-    PaymentItemResponse,
+    PaymentCreateRequest,
+    PaymentDetailResponse,
+    PaymentListResponse,
+    PaymentSuccessResponse,
+    PaymentCancelResponse,
 )
-from services.db_utils import save_payment_to_db, save_payment_items_to_db
-from services.stripe_utils import create_checkout_session
+
+from services.payment_service import PaymentService
+from services.perms_utils import user_moderator_or_admin
+from services.stripe_utils import StripeService
+
+import logging
 
 router = APIRouter()
 
-stripe.api_key = (
-    "sk_test_51QxBPLKX7EO9LjLpMK58n2sEjFFAqE11RuyUCF"
-    "gTIvLSS7uH4Ho4jLmeNmL224hallbOWXxih3v7XKIbGkp4TMhw00oFPR3ImN"
+endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+STRIPE_API_KEY = os.getenv("STRIPE_SECRET_KEY")
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+front_url = "http://127.0.0.1:8000/api/v1/payments"
+
+
+@router.post(
+    "/create_payment",
+    response_model=PaymentResponse,
+    status_code=status.HTTP_201_CREATED,
 )
-endpoint_secret = (
-    "whsec_f61d76fd5229d4fc777431940843508ab66afec305fb243e17b50ed55cb17f3a"
-)
-
-YOUR_DOMAIN = "http://127.0.0.1:8000/api/v1/payments"
-
-
-@router.get("/success")
-async def success_page(session_id: str):
-    return {"message": "Payment was successful!", "session_id": session_id}
-
-
-@router.get("/cancel")
-async def cancel_page():
-    return {"message": "Payment has been canceled. Try again."}
-
-
-@router.post("/create_payment", response_model=dict, status_code=201)
-async def create_payment(
-    background_tasks: BackgroundTasks,
-    payment_data: PaymentCreate,
+async def create_payment_endpoint(
+    payment_data: PaymentCreateRequest,
     db: AsyncSession = Depends(get_sqlite_db),
     current_user: UserModel = Depends(get_current_user),
 ):
     """
-    Easily create a Stripe payment session and return a payment link.
+    Create a new payment session for the specified order
+    """
+    stripe_service = StripeService(STRIPE_API_KEY, endpoint_secret)
+    payment_service = PaymentService(db, stripe_service)
+
+    try:
+        success_url = f"{front_url}/{payment_data.order_id}/success?session_id={{CHECKOUT_SESSION_ID}}"
+        cancel_url = f"{front_url}/{payment_data.order_id}/cancel?session_id={{CHECKOUT_SESSION_ID}}"
+
+        result = await payment_service.create_payment_session(
+            order_id=payment_data.order_id,
+            user_id=current_user.id,
+            success_url=success_url,
+            cancel_url=cancel_url,
+        )
+
+        return PaymentResponse(
+            id=result["id"],
+            user_id=result["user_id"],
+            order_id=result["order_id"],
+            created_at=result["created_at"],
+            status=result["status"],
+            amount=result["amount"],
+            external_payment_id=result["external_payment_id"],
+            payment_url=result["payment_url"],
+        )
+    except OrderAlreadyPaidError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except OrderNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except InvalidOrderStatusError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except PaymentCreationError as e:
+        logger.error(f"Payment creation error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in payment creation: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
+        )
+
+
+@router.get("/{order_id}/success", response_model=PaymentSuccessResponse)
+async def payment_success(
+    background_tasks: BackgroundTasks,
+    order_id: int,
+    session_id: str = Query(..., alias="session_id"),
+    db: AsyncSession = Depends(get_sqlite_db),
+):
+    """
+    Endpoint for successful payment callback (no auth required)
+    """
+    stripe_service = StripeService(STRIPE_API_KEY, endpoint_secret)
+    payment_service = PaymentService(db, stripe_service)
+
+    try:
+        stripe_session = await stripe_service.retrieve_session(session_id)
+        if not stripe_session or stripe_session.get("payment_status") != "paid":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Payment verification failed",
+            )
+
+        payment_result = await _process_payment_in_transaction(
+            db=db,
+            payment_service=payment_service,
+            session_id=session_id,
+            order_id=order_id,
+        )
+
+        if not payment_result:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Payment processing failed",
+            )
+
+        payment, was_already_processed = payment_result
+
+        if stripe_session.get("customer_email"):
+            background_tasks.add_task(
+                send_payment_confirmation,
+                stripe_session["customer_email"],
+                order_id,
+                float(payment.amount),
+            )
+
+        return {
+            "status": "success",
+            "message": (
+                "Payment already processed"
+                if was_already_processed
+                else "Payment completed successfully"
+            ),
+            "order_id": order_id,
+            "payment_id": payment.id,
+            "amount": float(payment.amount),
+            "paid_at": (
+                payment.created_at.isoformat()
+                if was_already_processed
+                else datetime.utcnow().isoformat()
+            ),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing payment: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Payment processing error"
+        )
+
+
+async def _process_payment_in_transaction(
+    db: AsyncSession, payment_service: PaymentService, session_id: str, order_id: int
+) -> Optional[tuple[PaymentModel, bool]]:
+    """Helper function to handle payment processing in transaction"""
+    try:
+        async with db.begin_nested():
+            payment = await payment_service.get_payment_with_lock(session_id=session_id)
+            if not payment:
+                logger.error(f"Payment not found for session: {session_id}")
+                return None
+
+            if payment.order_id != order_id:
+                logger.error(f"Order ID mismatch: {payment.order_id} != {order_id}")
+                return None
+
+            if payment.status == PaymentStatusEnum.COMPLETED:
+                logger.info(f"Payment {payment.id} already processed")
+                return (payment, True)
+
+            payment.status = PaymentStatusEnum.COMPLETED
+            payment.updated_at = datetime.utcnow()
+
+            await db.execute(
+                update(OrderModel)
+                .where(OrderModel.id == order_id)
+                .values(status=OrderStatusEnum.PAID)
+            )
+
+            await db.commit()
+            return (payment, False)
+
+    except Exception as e:
+        logger.error(f"Transaction error: {str(e)}", exc_info=True)
+        await db.rollback()
+        raise
+
+
+@router.get("/{order_id}/cancel", response_model=PaymentCancelResponse)
+async def payment_cancel(
+    order_id: int,
+    session_id: str = Query(..., alias="session_id"),
+    db: AsyncSession = Depends(get_sqlite_db),
+):
+    """
+    Endpoint for canceled payment callback (no auth required)
+    """
+    stripe_service = StripeService(STRIPE_API_KEY, endpoint_secret)
+    payment_service = PaymentService(db, stripe_service)  # noqa: F841
+
+    try:
+        stripe_session = await stripe_service.retrieve_session(session_id)
+        if not stripe_session:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid payment session",
+            )
+
+        async with db.begin():
+            result = await db.execute(
+                update(PaymentModel)
+                .where(PaymentModel.external_payment_id == session_id)
+                .values(status=PaymentStatusEnum.CANCELLED)
+                .returning(PaymentModel.id, PaymentModel.order_id)
+            )
+            payment_data = result.first()
+
+            if not payment_data or payment_data[1] != order_id:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Payment not found or order mismatch",
+                )
+
+            return {
+                "status": "canceled",
+                "message": "Payment was canceled",
+                "order_id": order_id,
+                "payment_id": payment_data[0],
+                "canceled_at": datetime.utcnow().isoformat(),
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing canceled payment: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Error canceling payment"
+        )
+
+
+@router.get("/", response_model=PaymentListResponse)
+async def get_payments(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
+    db: AsyncSession = Depends(get_sqlite_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    """
+    Get paginated list of user payments
     """
     try:
-        total_amount = sum(item.price_at_payment for item in payment_data.payment_items)
-
-        payment_url = create_checkout_session(
-            payment_data.order_id, total_amount, current_user.id
+        payment_service = PaymentService(
+            db, StripeService(STRIPE_API_KEY, endpoint_secret)
         )
 
-        db_payment = await save_payment_to_db(
-            db, payment_data.order_id, total_amount, payment_url, current_user.id
+        payments = await payment_service.get_user_payments(
+            user_id=current_user.id, limit=per_page, offset=(page - 1) * per_page
         )
 
-        await save_payment_items_to_db(db, db_payment.id, payment_data.payment_items)
+        total = await payment_service.get_total_payments_count(current_user.id)
+        total_pages = (total + per_page - 1) // per_page
 
-        return {"payment_link": payment_url}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error when creating a payment: {str(e)}"
-        )
-
-
-@router.get("/", response_model=List[PaymentHistoryResponse])
-async def get_payment_history(
-    db: AsyncSession = Depends(get_sqlite_db),
-    current_user: UserModel = Depends(get_current_user),
-    status: Optional[PaymentStatusEnum] = None,
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
-):
-    """
-    Get payment history for the current user with optional filters.
-    """
-    query = select(PaymentModel).where(PaymentModel.user_id == current_user.id)
-
-    if status:
-        query = query.where(PaymentModel.status == status)
-
-    if start_date:
-        query = query.where(PaymentModel.created_at >= start_date)
-
-    if end_date:
-        query = query.where(PaymentModel.created_at <= end_date)
-
-    result = await db.execute(query.order_by(PaymentModel.created_at.desc()))
-    payments = result.scalars().all()
-
-    payment_data = []
-    for payment in payments:
-        items_query = select(PaymentItemsModel).where(
-            PaymentItemsModel.payment_id == payment.id
-        )
-        items_result = await db.execute(items_query)
-        payment_items = items_result.scalars().all()
-
-        payment_response = PaymentResponse(
-            id=payment.id,
-            user_id=payment.user_id,
-            order_id=payment.order_id,
-            created_at=payment.created_at,
-            status=payment.status,
-            amount=payment.amount,
-            external_payment_id=payment.external_payment_id,
-            items=[
-                PaymentItemResponse(
-                    id=item.id,
-                    payment_id=item.payment_id,
-                    order_item_id=item.order_item_id,
-                    price_at_payment=item.price_at_payment,
-                )
-                for item in payment_items
-            ],
-        )
-
-        payment_data.append(
-            PaymentHistoryResponse(
-                payment=payment_response, items=payment_response.items
+        payments_data = [
+            PaymentResponse(
+                id=payment.id,
+                user_id=payment.user_id,
+                order_id=payment.order_id,
+                created_at=payment.created_at,
+                status=payment.status,
+                amount=payment.amount,
+                external_payment_id=payment.external_payment_id,
+                payment_url=getattr(payment, "payment_url", None),
             )
+            for payment in payments
+        ]
+
+        return PaymentListResponse(
+            payments=payments_data,
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=total_pages,
         )
 
-    return payment_data
+    except Exception as e:
+        logger.error(f"Error fetching payments: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error fetching payments",
+        )
 
 
-@router.get("/{payment_id}", response_model=PaymentHistoryResponse)
+@router.get("/{payment_id}", response_model=PaymentDetailResponse)
 async def get_payment_details(
     payment_id: int,
     db: AsyncSession = Depends(get_sqlite_db),
     current_user: UserModel = Depends(get_current_user),
+    staff_user: Optional[UserModel] = Depends(user_moderator_or_admin),
 ):
     """
     Get details of a specific payment
     """
-    payment = await db.get(PaymentModel, payment_id)
-
-    if not payment:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found"
-        )
-
-    if payment.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have permission to view this payment",
-        )
-
-    result = await db.execute(
-        select(PaymentItemsModel).where(PaymentItemsModel.payment_id == payment_id)
-    )
-    items = result.scalars().all()
-
-    payment_items = [
-        PaymentItemResponse(
-            id=item.id,
-            payment_id=item.payment_id,
-            order_item_id=item.order_item_id,
-            price_at_payment=item.price_at_payment,
-        )
-        for item in items
-    ]
-
-    return PaymentHistoryResponse(
-        payment=PaymentResponse(
-            id=payment.id,
-            user_id=payment.user_id,
-            order_id=payment.order_id,
-            created_at=payment.created_at,
-            status=payment.status,
-            amount=payment.amount,
-            external_payment_id=payment.external_payment_id,
-            items=payment_items,
-        ),
-        items=payment_items,
-    )
-
-
-@router.post("/webhook/")
-async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_sqlite_db)):
-    payload = await request.body()
-    sig_header = request.headers.get("Stripe-Signature")
-
     try:
-        event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid payload")
-    except stripe.error.SignatureVerificationError:
-        raise HTTPException(status_code=400, detail="Invalid signature")
-
-    event_type = event["type"]
-    session = event["data"]["object"]
-
-    if event_type == "checkout.session.completed":
-        # payment_intent_id = session.get("payment_intent")
-        payment_id = session.get("id")
-        amount_received = session.get("amount_received") / 100
-
-        order_id = session.get("client_reference_id")
-        # payment_method_id = session.get("payment_method")
-
-        new_payment = PaymentModel(
-            user_id=session["customer"],
-            order_id=order_id,
-            amount=amount_received,
-            external_payment_id=payment_id,
-            status=PaymentStatusEnum.SUCCESSFUL,
+        payment_service = PaymentService(
+            db, StripeService(STRIPE_API_KEY, endpoint_secret)
         )
 
-        db.add(new_payment)
-        await db.commit()
+        user_id = None if staff_user else current_user.id
 
-        for item in session["line_items"]["data"]:
-            order_item_id = item["price"]["product"]
-            price_at_payment = item["amount_total"] / 100
+        payment_data = await payment_service.get_payment_details(
+            payment_id=payment_id, user_id=user_id
+        )
 
-            new_payment_item = PaymentItemsModel(
-                payment_id=new_payment.id,
-                order_item_id=order_item_id,
-                price_at_payment=price_at_payment,
+        if not payment_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Payment not found or access denied",
             )
-            db.add(new_payment_item)
 
-        await db.commit()
+        return payment_data
 
-        return JSONResponse(
-            status_code=200, content={"message": "Webhook received successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching payment details: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error fetching payment details",
         )
-    else:
-        return JSONResponse(
-            status_code=400, content={"message": "Unhandled event type"}
-        )
 
 
-# Admin endpoints
-@router.get("/admin-payments/", response_model=List[PaymentHistoryResponse])
-async def admin_get_payments(
+@router.post("/webhook")
+async def stripe_webhook(
+    request: Request,
     db: AsyncSession = Depends(get_sqlite_db),
-    user_id: Optional[int] = None,
-    status: Optional[PaymentStatusEnum] = None,
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
 ):
     """
-    Admin endpoint to get all payments with filters
+    Stripe webhook handler for payment events
     """
-    # TODO admin permissions here
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
 
-    query = select(PaymentModel)
+    stripe_service = StripeService(STRIPE_API_KEY, endpoint_secret)
+    payment_service = PaymentService(db, stripe_service)
 
-    if user_id:
-        query = query.where(PaymentModel.user_id == user_id)
+    try:
+        event = await stripe_service.construct_webhook_event(payload, sig_header)
 
-    if status:
-        query = query.where(PaymentModel.status == status)
+        if event["type"] == "checkout.session.completed":
+            session = event["data"]["object"]
+            if session.payment_status == "paid":
+                if not await payment_service.process_successful_payment(session.id):
+                    return JSONResponse(content={"status": "failed"}, status_code=400)
 
-    if start_date:
-        query = query.where(PaymentModel.created_at >= start_date)
+        return {"status": "success"}
 
-    if end_date:
-        query = query.where(PaymentModel.created_at <= end_date)
-
-    payments = await db.scalars(query.order_by(PaymentModel.created_at.desc())).all()
-
-    result = []
-    for payment in payments:
-        items = await db.scalars(
-            select(PaymentItemsModel).where(PaymentItemsModel.payment_id == payment.id)
-        ).all()
-
-        result.append({"payment": payment, "items": items})
-
-    return result
+    except Exception as e:
+        logger.error(f"Webhook error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=400, detail=str(e))
