@@ -33,7 +33,3 @@ RUN poetry config virtualenvs.create false && \
     poetry install --no-interaction --no-ansi --no-root
 
 COPY ./src .
-COPY ./commands /commands
-
-RUN dos2unix /commands/*.sh
-RUN chmod +x /commands/*.sh

@@ -39,20 +39,6 @@ services:
     networks:
       - "cinema_api_network"
 
-  migrator:
-    build: .
-    container_name: "alembic_migrator"
-    command: ["/bin/bash", "/commands/run_migrations.sh"]
-    depends_on:
-      db:
-        condition: service_healthy
-    env_file:
-      - .env
-    environment:
-      - PYTHONPATH=/usr/src/app
-    networks:
-      - "cinema_api_network"
-
   redis:
     image: redis:latest
     restart: always

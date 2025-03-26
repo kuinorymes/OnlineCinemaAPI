@@ -10,7 +10,6 @@ from datetime import datetime
 
 from database.session_postgresql import postgres_async_session
 
-
 async def delete_expired_tokens(token_model: TokenBaseModel, type_of_token: str):
     async with postgres_async_session() as db:
         expired_tokens_stmt = select(token_model).where(
@@ -30,15 +29,12 @@ async def delete_expired_tokens(token_model: TokenBaseModel, type_of_token: str)
 
 
 async def run_tasks():
-    task1 = asyncio.create_task(delete_expired_tokens(PasswordResetTokenModel, "password reset"))
-    task2 = asyncio.create_task(delete_expired_tokens(ActivationTokenModel, "activation"))
-    # await asyncio.gather(
-    #     delete_expired_tokens(PasswordResetTokenModel, "password reset"),
-    #     delete_expired_tokens(ActivationTokenModel, "activation"),
-    #     return_exceptions=True
-    #)
-    await task1
-    await task2
+    results = await asyncio.gather(
+        delete_expired_tokens(PasswordResetTokenModel, "password reset"),
+        delete_expired_tokens(ActivationTokenModel, "activation"),
+        return_exceptions=True
+    )
+    return results
 
 
 @shared_task
