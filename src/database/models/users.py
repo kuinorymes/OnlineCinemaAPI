@@ -55,7 +55,7 @@ class UserModel(Base):
     group_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("user_groups.id", ondelete="CASCADE"), nullable=False
     )
-    group: Mapped[UserGroupModel] = relationship(
+    group: Mapped["UserGroupModel"] = relationship(
         "UserGroupModel", back_populates="users"
     )
 
@@ -121,7 +121,7 @@ class UserProfileModel(Base):
         nullable=False,
         unique=True,
     )
-    user: Mapped[UserModel] = relationship("UserModel", back_populates="profile")
+    user: Mapped["UserModel"] = relationship("UserModel", back_populates="profile")
 
 
 class TokenBaseModel(Base):
@@ -146,7 +146,7 @@ class ActivationTokenModel(TokenBaseModel):
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
     )
-    user: Mapped[UserModel] = relationship(
+    user: Mapped["UserModel"] = relationship(
         "UserModel", back_populates="activation_token"
     )
 
@@ -157,7 +157,7 @@ class PasswordResetTokenModel(TokenBaseModel):
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
     )
-    user: Mapped[UserModel] = relationship(
+    user: Mapped["UserModel"] = relationship(
         "UserModel", back_populates="password_reset_token"
     )
 
@@ -170,7 +170,7 @@ class RefreshTokenModel(TokenBaseModel):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    user: Mapped[UserModel] = relationship("UserModel", back_populates="refresh_tokens")
+    user: Mapped["UserModel"] = relationship("UserModel", back_populates="refresh_tokens")
 
     @classmethod
     def create(

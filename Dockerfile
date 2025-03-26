@@ -12,11 +12,16 @@ ENV POETRY_NO_INTERACTION=1 \
     POETRY_CACHE_DIR='/var/cache/pypoetry' \
     POETRY_HOME='/usr/local'
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl build-essential && \
-    rm -rf /var/lib/apt/lists/*
+RUN apt update && apt install -y \
+    gcc \
+    libpq-dev \
+    netcat-openbsd \
+    postgresql-client \
+    dos2unix \
+    && apt clean
 
-RUN pip install poetry
+RUN python -m pip install --upgrade pip && \
+    pip install poetry
 
 WORKDIR /usr/src/app
 
@@ -28,3 +33,7 @@ RUN poetry config virtualenvs.create false && \
     poetry install --no-interaction --no-ansi --no-root
 
 COPY ./src .
+COPY ./commands /commands
+
+RUN dos2unix /commands/*.sh
+RUN chmod +x /commands/*.sh
