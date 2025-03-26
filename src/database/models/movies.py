@@ -196,5 +196,7 @@ class MovieVoteModel(Base):
         Integer, ForeignKey("movies.id"), nullable=False
     )
 
-    user: Mapped["UserModel"] = relationship("UserModel", back_populates="votes")  # noqa: F821
+    user: Mapped["UserModel"] = relationship(  # noqa: F821
+        "UserModel", back_populates="votes"
+    )
     movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="votes")
