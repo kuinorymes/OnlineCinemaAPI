@@ -13,6 +13,7 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 logger = logging.getLogger(__name__)
 
+
 class StripeService:
     def __init__(self, api_key: str, webhook_secret: str):
         stripe.api_key = api_key

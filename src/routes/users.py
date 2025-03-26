@@ -47,7 +47,7 @@ from database.models.users import (
     PasswordResetTokenModel,
     UserProfileModel,
 )
-from database.session_sqlite import get_sqlite_db
+from database.session_postgresql import get_postgres_db
 from security.interfaces import JWTAuthManagerInterface
 from security.password import hash_password
 
@@ -60,7 +60,7 @@ from storages.interfaces import S3StorageInterface
 
 router = APIRouter()
 
-DB = Annotated[AsyncSession, Depends(get_sqlite_db)]
+DB = Annotated[AsyncSession, Depends(get_postgres_db)]
 
 
 @router.post(

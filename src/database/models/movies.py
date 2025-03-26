@@ -17,7 +17,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
-from database import Base
+from database.models.base import Base
 
 
 class VotesEnum(enum.Enum):

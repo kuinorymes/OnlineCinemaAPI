@@ -14,8 +14,8 @@ from database.models.orders import (
     OrderStatusEnum,
     OrderItemModel,
 )
+from database.session_postgresql import get_postgres_db as get_db
 from database.models.users import UserModel
-from database.session_sqlite import get_sqlite_db as get_db
 from schemas.orders import (
     OrderResponseSchema,
     OrderCreateSchema,

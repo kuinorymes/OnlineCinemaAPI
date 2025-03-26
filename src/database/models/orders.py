@@ -6,7 +6,7 @@ from typing import Optional, List
 from sqlalchemy import ForeignKey, DateTime, func, Numeric, Enum, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from database import Base
+from database.models.base import Base
 
 
 class OrderStatusEnum(str, enum.Enum):
@@ -30,7 +30,9 @@ class OrderModel(Base):
         Numeric(10, 2), nullable=True
     )
 
-    user: Mapped["UserModel"] = relationship("UserModel", lazy="selectin")  # noqa: F821
+    user: Mapped["UserModel"] = relationship(
+        "UserModel", back_populates="orders", lazy="selectin"
+    )  # noqa: F821
     order_items: Mapped[List["OrderItemModel"]] = relationship(
         back_populates="order", lazy="selectin", cascade="all, delete"
     )
