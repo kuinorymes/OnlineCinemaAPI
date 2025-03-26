@@ -48,12 +48,27 @@ class MovieBaseSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class MovieCommentBaseSchema(BaseModel):
+    content: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MovieCommentDetailSchema(MovieCommentBaseSchema):
+    id: int
+    movie_id: int
+    user_id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class MovieDetailSchema(MovieBaseSchema):
     id: int
     uuid: UUID4
     stars: List[StarSchema]
     directors: List[DirectorSchema]
     genres: List[GenreSchema]
+    comments: List[MovieCommentDetailSchema]
 
     model_config = ConfigDict(from_attributes=True)
 

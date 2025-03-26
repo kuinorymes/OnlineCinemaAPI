@@ -5,9 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import select, func
 
-from database.models.movies import MovieVoteModel
+from database.models.movies import CommentModel
 from database.models.orders import OrderItemModel
-from database.models.users import UserModel
+from routes.users import get_current_user
+
 from schemas import (
     MovieListResponseSchema,
     MovieListItemSchema,
@@ -23,7 +24,8 @@ from database import (
     DirectorModel,
     CertificationModel,
 )
-from schemas.movies import VoteSchema
+from schemas.movies import MovieCommentBaseSchema, MovieCommentDetailSchema
+
 from services import user_staff
 from routes.users import get_current_user
 
@@ -132,6 +134,7 @@ async def get_movie_by_id(
             joinedload(MovieModel.stars),
             joinedload(MovieModel.directors),
             joinedload(MovieModel.certification),
+            joinedload(MovieModel.comments),
         )
         .where(MovieModel.id == movie_id)
     )
@@ -362,10 +365,10 @@ async def update_movie(
 
 
 @router.post(
-    "/movies/{movie_id}/votes/",
+    "/movies/{movie_id}/comments/",
     dependencies=[Depends(get_current_user)],
-    summary="Like/Dislike a movie by ID",
-    description="<h3>Vote for a movie either like or dislike</h3>",
+    summary="Add comment to a movie",
+    description=("<h3>Put your thoughts in the comment section</h3>"),
     responses={
         404: {
             "description": "Movie not found.",
@@ -374,30 +377,93 @@ async def update_movie(
                     "example": {"detail": "Movie with the given ID was not found."}
                 }
             },
-        },
-        200: {
-            "description": "Movie vote updated",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Movie vote updated successfully."}
-                }
-            },
-        },
+        }
     },
+    response_model=MovieCommentDetailSchema,
 )
-async def vote_movie(
+async def add_comment(
     movie_id: int,
-    vote: VoteSchema,
-    user: UserModel = Depends(get_current_user),
+    comment: MovieCommentBaseSchema,
+    user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
-    movies_stmt = select(MovieModel).where(MovieModel.id == movie_id)
-    result = await db.execute(movies_stmt)
+) -> MovieCommentDetailSchema:
+    stmt = select(MovieModel).where(MovieModel.id == movie_id)
+    result = await db.execute(stmt)
     movie = result.scalars().first()
 
     if not movie:
         raise HTTPException(status_code=404, detail="Movie not found")
 
+    comment = CommentModel(
+        content=comment.content,
+        movie_id=movie_id,
+        user_id=user.id,
+    )
+    db.add(comment)
+    await db.commit()
+
+    return MovieCommentDetailSchema.model_validate(comment)
+
+
+@router.delete(
+    "/movies/{movie_id}/comments/{comment_id}/",
+    dependencies=[Depends(get_current_user)],
+    summary="Remove a comment from a movie",
+    description=("<h3>Remove a comment from a movie.</h3>"),
+    responses={
+        404: {
+            "description": "Movie not found.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Movie or Comment with the given ID was not found."
+                    }
+                }
+            },
+        },
+        403: {
+            "description": "You are not the author of this comment.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "You cannot delete a comment you did not create."
+                    }
+                }
+            },
+        },
+    },
+)
+async def delete_comment(
+    movie_id: int,
+    comment_id: int,
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    stmt_movie = select(MovieModel).where(MovieModel.id == movie_id)
+    result_movie = await db.execute(stmt_movie)
+    movie = result_movie.scalars().first()
+
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie not found")
+
+    stmt_comment = select(CommentModel).where(
+        CommentModel.id == comment_id, CommentModel.movie_id == movie_id
+    )
+    result_comment = await db.execute(stmt_comment)
+    comment = result_comment.scalars().first()
+
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    if comment.user_id != user.id:
+        raise HTTPException(
+            status_code=403, detail="You cannot delete a comment you did not create"
+        )
+
+    await db.delete(comment)
+    await db.commit()
+
+    return {"detail": "Comment deleted successfully"}
     vote_stmt = select(MovieVoteModel).where(
         MovieVoteModel.movie_id == movie_id,
         MovieVoteModel.user_id == user.id,

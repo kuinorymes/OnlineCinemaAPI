@@ -172,6 +172,10 @@ class MovieModel(Base):
         "MovieVoteModel", back_populates="movie", cascade="all, delete-orphan"
     )
 
+    comments: Mapped[list["CommentModel"]] = relationship(
+        "CommentModel", back_populates="movie", cascade="all, delete-orphan"
+    )
+
     __table_args__ = (
         UniqueConstraint("name", "year", "time", name="unique_movie_constraint"),
     )
@@ -184,11 +188,20 @@ class MovieModel(Base):
         return f"<Movie(name='{self.name}', year='{self.year}', meta_score={self.meta_score})>"
 
 
+
+class CommentModel(Base):
+    __tablename__ = "comments"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+      
+      
 class MovieVoteModel(Base):
     __tablename__ = "movie_votes"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     is_like: Mapped[VotesEnum] = mapped_column(Enum(VotesEnum), nullable=False)
+
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=False
     )
@@ -197,6 +210,7 @@ class MovieVoteModel(Base):
     )
 
     user: Mapped["UserModel"] = relationship(  # noqa: F821
-        "UserModel", back_populates="votes"
+        "UserModel", back_populates="comments"
     )
-    movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="votes")
+    movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="comments")
+
