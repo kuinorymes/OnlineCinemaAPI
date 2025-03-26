@@ -30,7 +30,7 @@ from database import (
 from schemas.movies import MovieCommentBaseSchema, MovieCommentDetailSchema
 
 from services import user_staff
-from routes.users import get_current_user
+from routes.users import get_current_user  # noqa: F811
 
 
 router = APIRouter()

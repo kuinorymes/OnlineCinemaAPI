@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List
 
-from sqlalchemy import ForeignKey, DateTime, func, Numeric, Enum
+from sqlalchemy import ForeignKey, DateTime, func, Numeric, Enum, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -30,12 +30,12 @@ class OrderModel(Base):
         Numeric(10, 2), nullable=True
     )
 
-    user: Mapped["UserModel"] = relationship("UserModel")  # noqa: F821
+    user: Mapped["UserModel"] = relationship("UserModel", lazy="selectin")  # noqa: F821
     order_items: Mapped[List["OrderItemModel"]] = relationship(
         back_populates="order", lazy="selectin", cascade="all, delete"
     )
     payments: Mapped[List["PaymentModel"]] = relationship(  # noqa: F821
-        "PaymentModel", back_populates="order"
+        "PaymentModel", back_populates="order", lazy="selectin"
     )
 
 
@@ -47,8 +47,12 @@ class OrderItemModel(Base):
     movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False)
     price_at_order: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
-    order: Mapped["OrderModel"] = relationship(back_populates="order_items")
-    movie: Mapped["MovieModel"] = relationship("MovieModel")  # noqa: F821
+    order: Mapped["OrderModel"] = relationship(
+        back_populates="order_items", lazy="selectin"
+    )
+    movie: Mapped["MovieModel"] = relationship(  # noqa: F821
+        "MovieModel", lazy="selectin"
+    )
     payment_items: Mapped["PaymentItemsModel"] = relationship(  # noqa: F821
         back_populates="order_item"
     )
