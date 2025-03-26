@@ -8,9 +8,9 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models.movies import CommentModel
+from database.models.movies import CommentModel, MovieVoteModel
 from database.models.orders import OrderItemModel
-from routes.users import get_current_user
+from database.models.users import UserModel
 
 from schemas import (
     MovieListResponseSchema,
@@ -27,13 +27,11 @@ from database import (
     DirectorModel,
     CertificationModel,
 )
-from schemas.movies import MovieCommentBaseSchema, MovieCommentDetailSchema
+from schemas.movies import MovieCommentBaseSchema, MovieCommentDetailSchema, VoteSchema
 
 from services import user_staff
 from routes.users import get_current_user  # noqa: F811
 
-
-router = APIRouter()
 
 router = APIRouter()
 
@@ -489,6 +487,44 @@ async def delete_comment(
     await db.commit()
 
     return {"detail": "Comment deleted successfully"}
+
+@router.post(
+    "/movies/{movie_id}/votes/",
+    dependencies=[Depends(get_current_user)],
+    summary="Like/Dislike a movie by ID",
+    description="<h3>Vote for a movie either like or dislike</h3>",
+    responses={
+        404: {
+            "description": "Movie not found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Movie with the given ID was not found."}
+                }
+            },
+        },
+        200: {
+            "description": "Movie vote updated",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Movie vote updated successfully."}
+                }
+            },
+        },
+    },
+)
+async def vote_movie(
+    movie_id: int,
+    vote: VoteSchema,
+    user: UserModel = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    movies_stmt = select(MovieModel).where(MovieModel.id == movie_id)
+    result = await db.execute(movies_stmt)
+    movie = result.scalars().first()
+
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie not found")
+
     vote_stmt = select(MovieVoteModel).where(
         MovieVoteModel.movie_id == movie_id,
         MovieVoteModel.user_id == user.id,
