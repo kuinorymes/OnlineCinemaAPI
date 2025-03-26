@@ -162,6 +162,10 @@ class MovieModel(Base):
         "DirectorModel", secondary=MoviesDirectorsModel, back_populates="movies"
     )
 
+    comments: Mapped[list["CommentModel"]] = relationship(
+        "CommentModel", back_populates="movie", cascade="all, delete-orphan"
+    )
+
     __table_args__ = (
         UniqueConstraint("name", "year", "time", name="unique_movie_constraint"),
     )
@@ -172,3 +176,21 @@ class MovieModel(Base):
 
     def __repr__(self):
         return f"<Movie(name='{self.name}', year='{self.year}', meta_score={self.meta_score})>"
+
+
+class CommentModel(Base):
+    __tablename__ = "comments"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False
+    )
+    movie_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("movies.id"), nullable=False
+    )
+
+    user: Mapped["UserModel"] = relationship(  # noqa: F821
+        "UserModel", back_populates="comments"
+    )
+    movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="comments")
