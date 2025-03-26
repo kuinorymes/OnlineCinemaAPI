@@ -34,6 +34,7 @@ async def run_tasks():
         delete_expired_tokens(ActivationTokenModel, "activation"),
         return_exceptions=True
     )
+    print(results)
     return results
 
 

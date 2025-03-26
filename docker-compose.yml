@@ -54,6 +54,7 @@ services:
     depends_on:
       - redis
       - db
+      - web
     env_file:
       - .env
     command: ["celery", "-A", "celery_app.config.app", "worker", "--pool=solo", "--loglevel=info"]
