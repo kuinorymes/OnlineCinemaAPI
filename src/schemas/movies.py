@@ -12,6 +12,11 @@ class GenreSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class GenreListResponseSchema(GenreSchema):
+    movie_count: int
+
+    model_config = ConfigDict(from_attributes=True)
+
 class StarSchema(BaseModel):
     id: int
     name: str
@@ -77,8 +82,14 @@ class MovieListItemSchema(BaseModel):
     id: int
     name: str
     year: int
-    meta_score: float
+    meta_score: Optional[float]
     description: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GenreDetailResponseSchema(GenreSchema):
+    movies: List[MovieListItemSchema]
 
     model_config = ConfigDict(from_attributes=True)
 
