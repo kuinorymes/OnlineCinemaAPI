@@ -63,5 +63,17 @@ async def send_reset_password_email_complete(email, login_link):
     await fast_mail.send_message(message)
 
 
-async def send_payment_confirmation():
-    pass
+async def send_payment_confirmation(email, order_id, total_amount):
+    template = templates.get_template("payment_confirmation.html")
+    html_content = template.render(
+        email=email, order_id=order_id, total_amount=total_amount
+    )
+
+    message = MessageSchema(
+        subject="Payment Confirmation",
+        recipients=[email],
+        body=html_content,
+        subtype=MessageType.html,
+    )
+    fast_mail = FastMail(mail_config)
+    await fast_mail.send_message(message)
