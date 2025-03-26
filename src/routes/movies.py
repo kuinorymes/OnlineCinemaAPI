@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+from datetime import date
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import exists
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
-from sqlalchemy.sql import select, func
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.models.orders import OrderItemModel
 from schemas import (
@@ -26,66 +29,88 @@ from services import user_staff
 
 router = APIRouter()
 
+router = APIRouter()
+
 
 @router.get(
     "/movies/",
     response_model=MovieListResponseSchema,
-    summary="Get a list of movies",
+    summary="Get list of movies",
     description=(
-        "<h3>This endpoint retrieves a paginated list of movies from the database. "
-        "Clients can specify the `page` number and the number of items per page using `per_page`. "
-        "The response includes details about the movies, total pages, and total items, "
-        "along with links to the previous and next pages if applicable.</h3>"
+        "Returns a list of movies with pagination, filtering, sorting, and search. "
+        "Parameters: page, per_page, search, year, genre, sort_by, order."
     ),
     responses={
         404: {
             "description": "No movies found",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "No movies found",
-                    }
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "No movies found"}}},
         }
     },
 )
 async def get_movie_list(
-    page: int = Query(1, ge=1, description="The page number"),
-    per_page: int = Query(10, ge=1, le=20, description="The number of items per page"),
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(10, ge=1, le=20, description="Items per page"),
+    search: Optional[str] = Query(None, description="Search movie title"),
+    year: Optional[int] = Query(None, description="Release year"),
+    genre: Optional[str] = Query(None, description="Filter by genre"),
+    sort_by: Optional[str] = Query("id", description="Field to sort by"),
+    order: Optional[str] = Query("desc", description="Sort order: 'asc' or 'desc'"),
     db: AsyncSession = Depends(get_db),
 ) -> MovieListResponseSchema:
-    offset = (page - 1) * per_page
+    if order not in ("asc", "desc"):
+        raise HTTPException(
+            status_code=400, detail="Invalid order value. Must be 'asc' or 'desc'."
+        )
+    if not hasattr(MovieModel, sort_by):
+        raise HTTPException(status_code=400, detail=f"Invalid sort_by field: {sort_by}")
 
+    offset = (page - 1) * per_page
     count_stmt = select(func.count(MovieModel.id))
+    stmt = select(MovieModel)
+
+    if search:
+        stmt = stmt.where(MovieModel.name.ilike(f"%{search}%"))
+        count_stmt = count_stmt.where(MovieModel.name.ilike(f"%{search}%"))
+    if year:
+        stmt = stmt.where(MovieModel.year == year)
+        count_stmt = count_stmt.where(MovieModel.year == year)
+    if genre:
+        stmt = stmt.where(MovieModel.genres.any(GenreModel.name.ilike(f"%{genre}%")))
+        count_stmt = count_stmt.where(
+            MovieModel.genres.any(GenreModel.name.ilike(f"%{genre}%"))
+        )
+
     result_count = await db.execute(count_stmt)
     total_items = result_count.scalar() or 0
-
-    if not total_items:
+    if total_items == 0:
         raise HTTPException(status_code=404, detail="No movies found")
 
-    order_by = MovieModel.default_order_by()
-    stmt = select(MovieModel)
-    if order_by:
-        stmt = stmt.order_by(*order_by)
-
+    order_column = getattr(MovieModel, sort_by)
+    stmt = stmt.order_by(order_column.desc() if order == "desc" else order_column.asc())
     stmt = stmt.offset(offset).limit(per_page)
-
     result_movies = await db.execute(stmt)
     movies = result_movies.scalars().all()
-
     if not movies:
         raise HTTPException(status_code=404, detail="No movies found")
 
     movie_list = [MovieListItemSchema.model_validate(movie) for movie in movies]
-
     total_pages = (total_items + per_page - 1) // per_page
 
     response = MovieListResponseSchema(
         movies=movie_list,
-        prev_page=f"/movies/?page={page-1}&per_page={per_page}" if page > 1 else None,
+        prev_page=(
+            (
+                f"/movies/?page={page-1}&per_page={per_page}"
+                f"&search={search or ''}&year={year or ''}&genre={genre or ''}&sort_by={sort_by}&order={order}"
+            )
+            if page > 1
+            else None
+        ),
         next_page=(
-            f"/movies/?page={page+1}&per_page={per_page}"
+            (
+                f"/movies/?page={page+1}&per_page={per_page}"
+                f"&search={search or ''}&year={year or ''}&genre={genre or ''}&sort_by={sort_by}&order={order}"
+            )
             if page < total_pages
             else None
         ),
