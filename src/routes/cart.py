@@ -5,8 +5,9 @@ from database.models.users import UserModel as User
 from database.models.shopping_cart import CartModel as Cart, CartItem
 from database.models.movies import MovieModel as Movie
 from security.permissions import is_admin
-from src.database.session_sqlite import get_sqlite_db
-from src.routes.users import get_current_user
+#from database.session_sqlite import get_sqlite_db
+from database.session_postgresql import get_postgres_db
+from routes.users import get_current_user
 
 router = APIRouter()
 
@@ -14,7 +15,7 @@ router = APIRouter()
 @router.get("/admin/users/{user_id}/cart", status_code=status.HTTP_200_OK)
 async def admin_view_user_cart(
     user_id: int,
-    db: AsyncSession = Depends(get_sqlite_db),
+    db: AsyncSession = Depends(get_postgres_db),
     current_admin=Depends(is_admin),
 ) -> dict:
     result = await db.execute(select(Cart).filter(Cart.user_id == user_id))
@@ -39,7 +40,7 @@ async def admin_view_user_cart(
 @router.post("/cart/items", status_code=status.HTTP_201_CREATED)
 async def add_item_to_cart(
     movie_id: int,
-    db: AsyncSession = Depends(get_sqlite_db),
+    db: AsyncSession = Depends(get_postgres_db),
     current_user=Depends(get_current_user),
 ):
     result = await db.execute(select(Movie).filter(Movie.id == movie_id))
@@ -74,7 +75,7 @@ async def add_item_to_cart(
 @router.delete("/cart/items/{item_id}", status_code=status.HTTP_200_OK)
 async def remove_item_from_cart(
     item_id: int,
-    db: AsyncSession = Depends(get_sqlite_db),
+    db: AsyncSession = Depends(get_postgres_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
     result = await db.execute(select(Cart).filter(Cart.user_id == current_user.id))
@@ -96,7 +97,7 @@ async def remove_item_from_cart(
 
 @router.get("/cart", status_code=status.HTTP_200_OK)
 async def view_cart(
-    db: AsyncSession = Depends(get_sqlite_db),
+    db: AsyncSession = Depends(get_postgres_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
     result = await db.execute(select(Cart).filter(Cart.user_id == current_user.id))
@@ -120,7 +121,7 @@ async def view_cart(
 
 @router.delete("/cart", status_code=status.HTTP_200_OK)
 async def clear_cart(
-    db: AsyncSession = Depends(get_sqlite_db),
+    db: AsyncSession = Depends(get_postgres_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
     result = await db.execute(select(Cart).filter(Cart.user_id == current_user.id))

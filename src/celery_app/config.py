@@ -2,10 +2,10 @@ from celery import Celery
 from celery.schedules import crontab
 
 from config.dependencies import get_settings
-from celery_app.tasks import delete_expired_tokens
+from celery_app.tasks import delete_expired_tokens_wrapper
+
 
 settings = get_settings()
-
 
 app = Celery("tasks")
 

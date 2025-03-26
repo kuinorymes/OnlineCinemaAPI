@@ -16,7 +16,6 @@ postgres_engine = create_async_engine(
 postgres_async_session = async_sessionmaker(
     bind=postgres_engine,
     class_=AsyncSession,
-    autoflush=False,
     expire_on_commit=False,
 )
 
