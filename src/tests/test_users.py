@@ -5,7 +5,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from fastapi import BackgroundTasks, HTTPException
 from fastapi.testclient import TestClient
 
-from database.models.users import UserModel, UserGroupModel, UserGroupEnum, ActivationTokenModel
+from database.models.users import (
+    UserModel,
+    UserGroupModel,
+    UserGroupEnum,
+    ActivationTokenModel,
+)
 from schemas.users import UserRegistrationRequestSchema, UserRegistrationResponseSchema
 from config.settings import BaseAppSettings
 
@@ -45,12 +50,12 @@ def valid_registration_data():
 @patch("routes.users.send_register_activate_email")
 @patch("security.password.hash_password")
 async def test_register_successful(
-        mock_hash_password,
-        mock_send_email,
-        mock_db,
-        mock_settings,
-        mock_background_tasks,
-        valid_registration_data,
+    mock_hash_password,
+    mock_send_email,
+    mock_db,
+    mock_settings,
+    mock_background_tasks,
+    valid_registration_data,
 ):
     mock_hash_password.return_value = "hashedpassword123"
 
@@ -71,6 +76,7 @@ async def test_register_successful(
     mock_db.add.side_effect = side_effect_add
 
     from routes.users import register
+
     result = await register(
         valid_registration_data,
         mock_background_tasks,
@@ -98,10 +104,10 @@ async def test_register_successful(
 
 @pytest.mark.asyncio
 async def test_register_user_already_exists(
-        mock_db,
-        mock_settings,
-        mock_background_tasks,
-        valid_registration_data,
+    mock_db,
+    mock_settings,
+    mock_background_tasks,
+    valid_registration_data,
 ):
     existing_user = MagicMock(spec=UserModel)
     existing_user.email = valid_registration_data.email
@@ -112,6 +118,7 @@ async def test_register_user_already_exists(
     mock_db.execute.return_value = user_result_mock
 
     from routes.users import register
+
     with pytest.raises(HTTPException) as exc_info:
         await register(
             valid_registration_data,
@@ -121,17 +128,19 @@ async def test_register_user_already_exists(
         )
 
     assert exc_info.value.status_code == 400
-    assert f"User with email {existing_user.email} already exists" in str(exc_info.value.detail)
+    assert f"User with email {existing_user.email} already exists" in str(
+        exc_info.value.detail
+    )
 
 
 @pytest.mark.asyncio
 @patch("security.password.hash_password")
 async def test_register_create_group_if_not_exists(
-        mock_hash_password,
-        mock_db,
-        mock_settings,
-        mock_background_tasks,
-        valid_registration_data,
+    mock_hash_password,
+    mock_db,
+    mock_settings,
+    mock_background_tasks,
+    valid_registration_data,
 ):
     mock_hash_password.return_value = "hashedpassword123"
 
@@ -152,6 +161,7 @@ async def test_register_create_group_if_not_exists(
     mock_db.add.side_effect = side_effect_add
 
     from routes.users import register
+
     result = await register(
         valid_registration_data,
         mock_background_tasks,
@@ -162,18 +172,22 @@ async def test_register_create_group_if_not_exists(
     assert mock_db.add.call_count == 3
     assert mock_db.flush.call_count == 2
 
-    group_add_call = [call for call in mock_db.add.call_args_list if isinstance(call[0][0], UserGroupModel)]
+    group_add_call = [
+        call
+        for call in mock_db.add.call_args_list
+        if isinstance(call[0][0], UserGroupModel)
+    ]
     assert len(group_add_call) == 1
 
 
 @pytest.mark.asyncio
 @patch("security.password.hash_password")
 async def test_register_database_error(
-        mock_hash_password,
-        mock_db,
-        mock_settings,
-        mock_background_tasks,
-        valid_registration_data,
+    mock_hash_password,
+    mock_db,
+    mock_settings,
+    mock_background_tasks,
+    valid_registration_data,
 ):
     mock_hash_password.return_value = "hashedpassword123"
 
@@ -190,6 +204,7 @@ async def test_register_database_error(
     mock_db.flush.side_effect = SQLAlchemyError("Database error")
 
     from routes.users import register
+
     with pytest.raises(HTTPException) as exc_info:
         await register(
             valid_registration_data,
