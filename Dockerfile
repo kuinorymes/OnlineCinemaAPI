@@ -17,9 +17,7 @@ RUN python -m pip install --upgrade pip && \
 
 WORKDIR /usr/src/app
 
-COPY /pyproject.toml ./
-COPY /poetry.lock ./
-COPY /alembic.ini ./
+COPY pyproject.toml poetry.lock alembic.ini ./
 
 RUN poetry config virtualenvs.create false && \
     poetry install --no-interaction --no-ansi --no-root
