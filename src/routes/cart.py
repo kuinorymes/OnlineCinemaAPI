@@ -27,10 +27,7 @@ async def admin_view_user_cart(
     stmt = (
         select(Cart)
         .where(Cart.user_id == user_id)
-        .options(
-            selectinload(Cart.items)
-            .selectinload(CartItem.movie)
-        )
+        .options(selectinload(Cart.items).selectinload(CartItem.movie))
     )
     result = await db.execute(stmt)
     cart = result.scalars().all()
@@ -117,9 +114,7 @@ async def view_cart(
 ) -> dict:
     stmt = (
         select(Cart)
-        .options(
-            selectinload(Cart.items).selectinload(CartItem.movie)
-        )
+        .options(selectinload(Cart.items).selectinload(CartItem.movie))
         .where(Cart.user_id == current_user.id)
     )
     result = await db.execute(stmt)
@@ -148,9 +143,7 @@ async def clear_cart(
 ) -> dict:
     stmt = (
         select(Cart)
-        .options(
-            selectinload(Cart.items).selectinload(CartItem.movie)
-        )
+        .options(selectinload(Cart.items).selectinload(CartItem.movie))
         .where(Cart.user_id == current_user.id)
     )
     result = await db.execute(stmt)

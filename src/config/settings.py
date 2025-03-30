@@ -51,7 +51,6 @@ class BaseAppSettings(BaseSettings):
     STRIPE_SECRET_KEY: str = os.getenv("STRIPE_SECRET_KEY")
 
 
-
 class Settings(BaseAppSettings):
     pass
 
