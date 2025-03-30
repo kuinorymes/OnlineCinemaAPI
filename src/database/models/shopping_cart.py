@@ -23,8 +23,8 @@ class CartItem(Base):
         DateTime, server_default=func.now(), nullable=False
     )
 
-    cart: Mapped["CartModel"] = relationship("CartModel", back_populates="items")
-    movie: Mapped["MovieModel"] = relationship("MovieModel")  # noqa: F821
+    cart: Mapped["CartModel"] = relationship("CartModel", back_populates="items", lazy="selectin")
+    movie: Mapped["MovieModel"] = relationship("MovieModel", lazy="selectin")  # noqa: F821
 
     __table_args__ = (UniqueConstraint("cart_id", "movie_id", name="_cart_movie_uc"),)
 
@@ -41,5 +41,5 @@ class CartModel(Base):
         "UserModel", back_populates="cart"
     )
     items: Mapped[List["CartItem"]] = relationship(
-        "CartItem", back_populates="cart", cascade="all, delete-orphan"
+        "CartItem", back_populates="cart", cascade="all, delete-orphan", lazy="selectin"
     )
