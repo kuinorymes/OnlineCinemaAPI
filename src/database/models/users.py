@@ -95,7 +95,7 @@ class UserModel(Base):
         "MovieVoteModel", back_populates="user", cascade="all, delete-orphan"
     )
     favorite_movies: Mapped[list["MovieModel"]] = relationship(  # noqa: F821
-        "MovieModel", secondary="MoviesFavoritesModel", back_populates="users_favorites"
+        "MovieModel", secondary="favorites", back_populates="users_favorites"
     )
 
     def verify_password(self, raw_password: str) -> bool:
