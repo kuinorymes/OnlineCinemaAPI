@@ -24,8 +24,8 @@ from schemas import (
     MovieCreateSchema,
     MovieUpdateSchema,
 )
-from database import (
-    get_db,
+from database.session_postgresql import get_postgres_db as get_db
+from database.models.movies import (
     MovieModel,
     GenreModel,
     StarModel,
