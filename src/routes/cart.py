@@ -1,6 +1,10 @@
+import traceback
+
 from fastapi import FastAPI, HTTPException, Depends, status, APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, text
+from sqlalchemy.orm import selectinload, joinedload
+
 from database.models.users import UserModel as User
 from database.models.shopping_cart import CartModel as Cart, CartItem
 from database.models.movies import MovieModel as Movie
@@ -17,10 +21,17 @@ router = APIRouter()
 async def admin_view_user_cart(
     user_id: int,
     db: AsyncSession = Depends(get_postgres_db),
-    current_admin=Depends(is_admin),
+    current_user_admin=Depends(is_admin),
 ) -> dict:
-    result = await db.execute(select(Cart).filter(Cart.user_id == user_id))
-    cart = result.scalars().first()
+
+    stmt = (
+        select(Cart)
+        .where(Cart.user_id == user_id)
+        .options(selectinload(Cart.items).selectinload(CartItem.movie))
+    )
+    result = await db.execute(stmt)
+    cart = result.scalars().all()
+
     if not cart:
         return {"items": []}
 
@@ -101,7 +112,12 @@ async def view_cart(
     db: AsyncSession = Depends(get_postgres_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    result = await db.execute(select(Cart).filter(Cart.user_id == current_user.id))
+    stmt = (
+        select(Cart)
+        .options(selectinload(Cart.items).selectinload(CartItem.movie))
+        .where(Cart.user_id == current_user.id)
+    )
+    result = await db.execute(stmt)
     cart = result.scalars().first()
     if not cart:
         return {"items": []}
@@ -113,7 +129,7 @@ async def view_cart(
             {
                 "cart_item_id": item.id,
                 "movie_id": movie.id,
-                "title": movie.title,
+                "name": movie.name,
                 "price": float(movie.price),
             }
         )
@@ -125,7 +141,12 @@ async def clear_cart(
     db: AsyncSession = Depends(get_postgres_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    result = await db.execute(select(Cart).filter(Cart.user_id == current_user.id))
+    stmt = (
+        select(Cart)
+        .options(selectinload(Cart.items).selectinload(CartItem.movie))
+        .where(Cart.user_id == current_user.id)
+    )
+    result = await db.execute(stmt)
     cart = result.scalars().first()
     if not cart:
         raise HTTPException(status_code=404, detail="Cart not found.")

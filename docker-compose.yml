@@ -73,6 +73,21 @@ services:
     command: ["celery", "-A", "celery_app.config.app", "beat", "--loglevel=info"]
     networks:
       - "cinema_api_network"
+  migrator:
+    build: .
+    command: >
+      sh -c "
+      alembic revision --autogenerate -m 'Initial migration' &&
+      alembic upgrade head"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    networks:
+      - "cinema_api_network"
+    volumes:
+      - ./src/database/migrations:/usr/src/app/database/migrations
 
 volumes:
   postgres_cinema_data:

@@ -134,7 +134,9 @@ async def activate_user(
     token_result = await db.execute(token_stmt)
     token = token_result.scalar_one_or_none()
 
-    if not token or token.expires_at < datetime.now():
+    expires_at_naive = token.expires_at.replace(tzinfo=None)
+
+    if not token or expires_at_naive < datetime.now():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Invalid or expired token.",

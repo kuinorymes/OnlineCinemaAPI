@@ -22,8 +22,6 @@ from schemas.orders import (
     OrderListResponseSchema,
 )
 from routes.users import get_current_user
-from schemas.payments import PaymentCreate
-from security.permissions import is_admin
 
 router = APIRouter()
 
