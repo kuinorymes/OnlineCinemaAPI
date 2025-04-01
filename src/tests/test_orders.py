@@ -1,4 +1,3 @@
-
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 from sqlalchemy.exc import SQLAlchemyError
@@ -17,7 +16,10 @@ from routes.orders import (
 from schemas.orders import OrderCreateSchema
 from database.models.orders import OrderStatusEnum
 
-def fake_execute_result(fetchall_return=None, scalars_all_return=None, scalar_one_or_none_return=None):
+
+def fake_execute_result(
+    fetchall_return=None, scalars_all_return=None, scalar_one_or_none_return=None
+):
     fake_result = MagicMock()
     fake_result.fetchall = MagicMock(return_value=fetchall_return)
     fake_scalars = MagicMock()
@@ -62,10 +64,11 @@ def valid_order_data():
     return OrderCreateSchema(items=[{"movie_id": 1}, {"movie_id": 2}])
 
 
-
 @pytest.mark.asyncio
 @patch("routes.orders.get_current_user")
-async def test_create_order_success(mock_get_current_user, mock_db, valid_order_data, mock_user):
+async def test_create_order_success(
+    mock_get_current_user, mock_db, valid_order_data, mock_user
+):
     mock_get_current_user.return_value = mock_user
 
     fake_result_1 = fake_execute_result(fetchall_return=[])
@@ -89,7 +92,9 @@ async def test_create_order_success(mock_get_current_user, mock_db, valid_order_
 
 @pytest.mark.asyncio
 @patch("routes.orders.get_current_user")
-async def test_create_order_already_purchased(mock_get_current_user, mock_db, valid_order_data, mock_user):
+async def test_create_order_already_purchased(
+    mock_get_current_user, mock_db, valid_order_data, mock_user
+):
     mock_get_current_user.return_value = mock_user
 
     fake_result = fake_execute_result(fetchall_return=[(1,), (2,)])
@@ -103,7 +108,9 @@ async def test_create_order_already_purchased(mock_get_current_user, mock_db, va
 
 @pytest.mark.asyncio
 @patch("routes.orders.get_current_user")
-async def test_create_order_with_pending_order(mock_get_current_user, mock_db, valid_order_data, mock_user):
+async def test_create_order_with_pending_order(
+    mock_get_current_user, mock_db, valid_order_data, mock_user
+):
     mock_get_current_user.return_value = mock_user
 
     fake_result_1 = fake_execute_result(fetchall_return=[])
@@ -114,12 +121,16 @@ async def test_create_order_with_pending_order(mock_get_current_user, mock_db, v
     with pytest.raises(HTTPException) as exc_info:
         await create_order(valid_order_data, mock_db, mock_user)
     assert exc_info.value.status_code == 400
-    assert "You already have pending orders with these movies" in str(exc_info.value.detail)
+    assert "You already have pending orders with these movies" in str(
+        exc_info.value.detail
+    )
 
 
 @pytest.mark.asyncio
 @patch("routes.orders.get_current_user")
-async def test_create_order_movie_not_found(mock_get_current_user, mock_db, valid_order_data, mock_user):
+async def test_create_order_movie_not_found(
+    mock_get_current_user, mock_db, valid_order_data, mock_user
+):
     mock_get_current_user.return_value = mock_user
 
     fake_result_1 = fake_execute_result(fetchall_return=[])
@@ -137,7 +148,6 @@ async def test_create_order_movie_not_found(mock_get_current_user, mock_db, vali
     assert "2" in str(exc_info.value.detail)
 
 
-
 @pytest.mark.asyncio
 @patch("routes.orders.get_current_user")
 async def test_get_user_orders(mock_get_current_user, mock_db, mock_user):
@@ -149,7 +159,7 @@ async def test_get_user_orders(mock_get_current_user, mock_db, mock_user):
         total_amount=Decimal("19.99"),
         status=OrderStatusEnum.PENDING,
         order_items=[dummy_order_item],
-        created_at=datetime.utcnow()
+        created_at=datetime.utcnow(),
     )
     fake_result = fake_execute_result(scalars_all_return=[order])
     mock_db.execute.return_value = fake_result
@@ -157,7 +167,6 @@ async def test_get_user_orders(mock_get_current_user, mock_db, mock_user):
     result = await get_user_orders(mock_db, mock_user)
     assert len(result.orders) == 1
     assert result.orders[0].id == 1
-
 
 
 @pytest.mark.asyncio
@@ -171,7 +180,7 @@ async def test_get_order_by_id(mock_get_current_user, mock_db, mock_user):
         total_amount=Decimal("19.99"),
         status=OrderStatusEnum.PENDING,
         order_items=[dummy_order_item],
-        created_at=datetime.utcnow()
+        created_at=datetime.utcnow(),
     )
     fake_result = fake_execute_result(scalar_one_or_none_return=order)
     mock_db.execute.return_value = fake_result
@@ -195,6 +204,7 @@ async def test_get_order_by_id_not_found(mock_get_current_user, mock_db, mock_us
 
 # --- Тести для cancel_order ---
 
+
 @pytest.mark.asyncio
 @patch("routes.orders.get_current_user")
 async def test_cancel_order_success(mock_get_current_user, mock_db, mock_user):
@@ -206,7 +216,7 @@ async def test_cancel_order_success(mock_get_current_user, mock_db, mock_user):
         total_amount=Decimal("19.99"),
         status=OrderStatusEnum.PENDING,
         order_items=[dummy_order_item],
-        created_at=datetime.utcnow()
+        created_at=datetime.utcnow(),
     )
     fake_result = fake_execute_result(scalar_one_or_none_return=order)
     mock_db.execute.return_value = fake_result
@@ -226,7 +236,7 @@ async def test_cancel_order_not_pending(mock_get_current_user, mock_db, mock_use
         total_amount=Decimal("19.99"),
         status=OrderStatusEnum.PAID,
         order_items=[dummy_order_item],
-        created_at=datetime.utcnow()
+        created_at=datetime.utcnow(),
     )
     fake_result = fake_execute_result(scalar_one_or_none_return=order)
     mock_db.execute.return_value = fake_result
