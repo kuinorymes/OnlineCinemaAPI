@@ -133,7 +133,7 @@ class TokenBaseModel(Base):
         default=lambda: datetime.now(timezone.utc) + timedelta(hours=24),
     )
     token: Mapped[str] = mapped_column(
-        String(64),
+        String(512),
         unique=True,
         nullable=False,
         default=generate_token,
